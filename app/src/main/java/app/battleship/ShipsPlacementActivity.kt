@@ -1,177 +1,105 @@
 package app.battleship
 
-import android.graphics.*
-import android.graphics.drawable.Drawable
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.Window
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.view.*
-import kotlin.math.max
-import kotlin.math.min
 
 class ShipsPlacementActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ships_placement)
-        setBarsBehavior(window)
+        hideSystemUI(window)
 
-        val layout = findViewById<LinearLayout>(R.id.layout1)
-        var size = min(resources.displayMetrics.heightPixels, resources.displayMetrics.widthPixels).toFloat()
-        size *= 0.8f
-        layout.layoutParams.width = size.toInt()
-        layout.layoutParams.height = size.toInt()
+        val size = 10
 
-        val dimension = 10
+        val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard)
+        layoutBoard.layoutParams.width = layoutBoard.layoutParams.width / (size + 1) * (size + 1)
+        layoutBoard.layoutParams.height = layoutBoard.layoutParams.height / (size + 1) * (size + 1)
 
-        generateBoard(layout, dimension)
-        // generateBoard(layout, dimension, leftSide = false)
-    }
+        val layoutRight = findViewById<LinearLayout>(R.id.layoutRight)
+        layoutRight.layoutParams.width = layoutBoard.layoutParams.width
+        layoutRight.layoutParams.height = layoutBoard.layoutParams.height
 
-    private fun setBarsBehavior(window: Window) {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window,
-            window.decorView.findViewById(android.R.id.content)).let { controller ->
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        val layoutShips = findViewById<LinearLayout>(R.id.layoutShips)
+        layoutShips.layoutParams.width = layoutShips.layoutParams.width / (size + 1) * (size + 1)
+        layoutShips.layoutParams.height = layoutShips.layoutParams.height / (size - 1) * (size - 1)
+
+        try {
+            val board = Board(size, this, layoutBoard, active = true)
+            // val board = Board(size, this, layoutBoard, leftSide = false)
+
+            val ships = generateShips(size, layoutShips)
+            // val boardLeft = Board(size - 2, this, layoutShips, false)
+        }
+        catch (e: Exception) {
+            e.printStackTrace(System.out)
         }
     }
 
-    private fun generateBoard(
-        layout: LinearLayout,
-        dimension: Int,
-        leftSide: Boolean = true,
-        borderWidth: Float = 4f,
-        borderColor: Int = Color.BLACK
-    ) : Array<Array<TextView?>> {
+    private fun generateShips(dimension: Int, layout: LinearLayout) : List<Ship> {
+        val size = dimension + 1
+        var shipSize = 4
 
-        val size = max(min(dimension, 20), 1) + 1
+        val ships = mutableListOf<Ship>()
 
-        layout.layoutParams.width = layout.layoutParams.width / size * size
-        layout.layoutParams.height = layout.layoutParams.height / size * size
-
-        // val tvBoard = Array(size) { Array(size) { TextView(this) } }
-        val tvBoard = Array<Array<TextView?>>(size) { arrayOfNulls(size) }
-
-        for (i in 0 until size) {
-
+        for (i in 0 until size - 2) {
             val rowLayout = LinearLayout(this)
             layout.addView(rowLayout)
 
             rowLayout.orientation = LinearLayout.HORIZONTAL
-            rowLayout.layoutParams = LinearLayout.LayoutParams(
-                layout.layoutParams.width,
-                layout.layoutParams.height / size
-            )
-            rowLayout.gravity = Gravity.CENTER
+            rowLayout.layoutParams.width = layout.layoutParams.width
+            rowLayout.layoutParams.height = layout.layoutParams.height / (size - 2)
 
-            for (j in 0 until size) {
+            if (i % 2 == 1) {
+                val n = 5 - shipSize
 
-                val tv = TextView(this)
-                if (i > 0 && j > 0) {
-                    tvBoard[i-1][j-1] = tv
-                }
-                rowLayout.addView(tv)
+                for (j in 0 until n * 2 - 1) {
+                    val shipLayout = LinearLayout(this)
+                    rowLayout.addView(shipLayout)
+                    shipLayout.orientation = LinearLayout.HORIZONTAL
 
-                tv.layoutParams.width = rowLayout.layoutParams.width / size
-                tv.layoutParams.height = rowLayout.layoutParams.height
-                tv.gravity = Gravity.CENTER
-                tv.setTextColor(Color.BLACK)
+                    if (j % 2 == 0) {
+                        ships.add(Ship(shipSize, shipLayout))
 
-                if (i > 1 && j > 1) {
-                    tv.background = BorderDrawable(false, true, true, false, borderWidth, borderColor)
-                }
-                else if (i > 1 && j == 1) {
-                    tv.background = BorderDrawable(false, true, true, true, borderWidth, borderColor)
-                }
-                else if (i == 1 && j > 1) {
-                    tv.background = BorderDrawable(true, true, true, false, borderWidth, borderColor)
-                }
-                else if (i == 1 && j == 1) {
-                    tv.background = BorderDrawable(true, true, true, true, borderWidth, borderColor)
-                }
+                        shipLayout.layoutParams.width = rowLayout.layoutParams.width / size * shipSize
+                        shipLayout.layoutParams.height = rowLayout.layoutParams.height
+                        // shipLayout.background = Board.BorderDrawable()
 
+                        for (k in 0 until shipSize) {
+                            val tv = TextView(this)
+                            shipLayout.addView(tv)
 
-                if (i > 0 && j > 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.7f)
+                            tv.layoutParams.width = shipLayout.layoutParams.width / shipSize
+                            tv.layoutParams.height = shipLayout.layoutParams.height
+                            tv.gravity = Gravity.CENTER
+                            tv.setTextColor(Color.BLACK)
+                            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.7f)
+                            tv.text = "\uD83D\uDEA2"
 
-                    tv.setOnClickListener {
-                        if (tv.text.isEmpty()) {
-                            tv.text = "O"
-                        } else {
-                            tv.text = ""
+                            if (k == 0) {
+                                tv.background = BorderDrawable()
+                            }
+                            else {
+                                tv.background = BorderDrawable(left = false)
+                            }
                         }
                     }
-                }
-                else if (i == 0 && j > 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.5f)
-                    tv.text = j.toString()
-                    // tv.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                }
-                else if (i > 0 && j == 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.5f)
-                    tv.text = ('A' - 1 + i).toString()
+                    else {
+                        shipLayout.layoutParams.width = rowLayout.layoutParams.width / size
+                        shipLayout.layoutParams.height = rowLayout.layoutParams.height
+                    }
                 }
 
-                // tv.setBackgroundColor(Color.rgb(i / (size - 1f), 0f, j / (size - 1f)))
+                --shipSize
+                if (shipSize == 0) break
             }
+
         }
 
-        if (!leftSide) {
-            for (child in layout.children) {
-                val row = child as LinearLayout
-                val view = row[0]
-                row.removeViewAt(0)
-                row.addView(view)
-            }
-        }
-
-        return tvBoard
-    }
-
-    private class BorderDrawable(
-        private val top: Boolean,
-        private val right: Boolean,
-        private val bottom: Boolean,
-        private val left: Boolean,
-        private val borderWidth: Float = 4.0f,
-        private val borderColor: Int = Color.BLACK,
-        private val borderStyle: Paint.Style = Paint.Style.STROKE
-    ) : Drawable() {
-
-        override fun draw(canvas: Canvas) {
-            val paint = Paint().apply {
-                color = borderColor
-                style = borderStyle
-                strokeWidth = borderWidth
-            }
-
-            val rect = RectF(bounds)
-
-            if (top) {
-                canvas.drawLine(rect.left, rect.top, rect.right, rect.top, paint) // Top
-            }
-            if (right) {
-                canvas.drawLine(rect.right, rect.top, rect.right, rect.bottom, paint) // Right
-            }
-            if (bottom) {
-                canvas.drawLine(rect.left, rect.bottom, rect.right, rect.bottom, paint) // Bottom
-            }
-            if (left) {
-                canvas.drawLine(rect.left, rect.top, rect.left, rect.bottom, paint) // Left
-            }
-        }
-
-        override fun setAlpha(alpha: Int) {}
-
-        override fun setColorFilter(colorFilter: ColorFilter?) {}
-
-        @Deprecated("Deprecated in Java", ReplaceWith("PixelFormat.OPAQUE", "android.graphics.PixelFormat"))
-        override fun getOpacity(): Int {
-            return PixelFormat.OPAQUE
-        }
+        return ships
     }
 }

@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -28,16 +30,34 @@ class ShipsPlacementActivity : AppCompatActivity() {
         layoutShips.layoutParams.width = layoutShips.layoutParams.width / (size + 1) * (size + 1)
         layoutShips.layoutParams.height = layoutShips.layoutParams.height / (size - 1) * (size - 1)
 
-        try {
-            val board = Board(size, this, layoutBoard, active = true)
-            // val board = Board(size, this, layoutBoard, leftSide = false)
 
-            val ships = generateShips(size, layoutShips)
-            // val boardLeft = Board(size - 2, this, layoutShips, false)
+        val board = Board(size, this, layoutBoard, active = true)
+        // val board = Board(size, this, layoutBoard, leftSide = false)
+
+        val ships = generateShips(size, layoutShips)
+        // val boardLeft = Board(size - 2, this, layoutShips, false)
+
+        board.toogleActiveState()
+
+        for (ship in ships) {
+            ship.view?.setOnClickListener() {
+                board.setBoardClickListener(ship.health, ship)
+                board.toogleActiveState()
+                ship.view?.alpha = 0.5f
+            }
+
         }
-        catch (e: Exception) {
-            e.printStackTrace(System.out)
+
+        val randomButton = findViewById<Button>(R.id.btShipsPlacement)
+        randomButton.setOnClickListener {
+            for (ship in ships) {
+                ship.view?.alpha = 0.5f
+                ship.view?.visibility = View.INVISIBLE
+            }
+            board.toogleActiveState()
+            board.setRandomPlacement(ships)
         }
+
     }
 
     private fun generateShips(dimension: Int, layout: LinearLayout) : List<Ship> {

@@ -10,6 +10,8 @@ class Ship(val length: Int, view: LinearLayout? = null) {
 
     var fileds: TreeSet<Field>? = null
 
+    var placement : Boolean = false
+
     var view: LinearLayout?
 
     init {

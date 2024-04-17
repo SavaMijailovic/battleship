@@ -1,320 +1,105 @@
 package app.battleship
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.View
+import android.view.MotionEvent
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.view.children
+import androidx.core.view.forEach
 import androidx.core.view.get
-import org.w3c.dom.Text
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.random.Random
 
 class Board(
     size: Int,
     context: Context? = null,
-    layout: LinearLayout? = null,
-    leftSide: Boolean = true,
-    active: Boolean = false
+    private val layout: LinearLayout? = null,
+    val rightSide: Boolean = false,
+    var active: Boolean = false
 ) {
 
-    val size: Int
+    companion object {
+        const val MIN_SIZE = 1
+        const val MAX_SIZE = 20
+    }
 
-    private var fields: Array<Array<Field>>
+    val size: Int = size.coerceIn(MIN_SIZE, MAX_SIZE)
 
-    var tvBoard: Array<Array<TextView?>>? = null
-        private set
-
-    var active: Boolean
+    private var fields: Array<Array<Field>> =
+        Array(this.size) { i -> Array(this.size) { j -> Field(j, i) } }
 
     init {
-        this.size = size.coerceIn(1..20)
-        fields = Array(this.size) { i -> Array(this.size) { j -> Field(j,i) } }
-
         if (context != null && layout != null) {
-            generateBoard(context, layout, this.size, leftSide)
+            generateBoard(context, layout, rightSide)
         }
-        this.active = active
     }
 
     operator fun get(index: Int) : Array<Field> {
         return fields[index]
     }
 
-    fun toogleActiveState() {
-        active = !active
-    }
-
-    private fun checkForBoat(i1 : Int,j1 : Int, j2 : Int) : Boolean {
-        for (i in max(i1-1,0) until min(i1+2,this.size)) {
-            for (j in max(j1-1,0) until min(j2+1,this.size)) {
-                if (this[i][j].state == Field.State.SHIP)
-                    return false
-            }
-        }
-        return true
-    }
-
-    private fun checkForBoat2(j1 : Int, i1 : Int, i2 : Int) : Boolean {
-        for (j in max(j1-1,0) until min(j1+2,this.size)) {
-            for (i in max(i1-1,0) until min(i2+1,this.size)) {
-                if (this[i][j].state == Field.State.SHIP)
-                    return false
-            }
-        }
-        return true
-    }
-
-    fun restartBoard() {
-        for(i in 0 until this.size) {
-            for(j in 0 until this.size) {
-                if (this[i][j].state != Field.State.UNKNOWN) {
-                    this[i][j].state = Field.State.UNKNOWN
-                }
-                tvBoard?.get(i)?.get(j)?.text = this[i][j].state.toString()
-            }
-        }
-    }
-
-    fun setBoardClickListener(n : Int, ship : Ship){
-        for (i in 0 until this.size) {
-            for (j in 0 until this[i].size) {
-
-                this.tvBoard?.get(i)?.get(j)?.setOnClickListener {
-                    if (active) {
-//                        if (this[i][j].state == Field.State.UNKNOWN)
-//                            this[i][j].state = Field.State.SHIP
-//                        else if (this[i][j].state == Field.State.SHIP)
-//                            this[i][j].state = Field.State.UNKNOWN
-
-                        if (j + n <= this.size && checkForBoat(i,j,j+n)) {
-                            for (k in j until j + n) {
-                                if (this[i][k].state == Field.State.UNKNOWN)
-                                    this[i][k].state = Field.State.SHIP
-                                ship.fileds?.add(fields[i][j])
-                                tvBoard?.get(i)?.get(k)?.text = this[i][j].state.toString()
-                            }
-                            ship.placement = true
-                            ship.view?.visibility = View.INVISIBLE
-                        }
-                        else {
-                            ship.view?.alpha = 1f
-                        }
-
-                        // tvBoard?.get(i)?.get(j)?.text = this[i][j].state.toString()
-                        toogleActiveState()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun indexFields(): MutableList<Pair<Int, Int>> {
-
-        var list : MutableList<Pair<Int, Int>> = mutableListOf()
-        for (i in 0 until this.size) {
-            for (j in 0 until this[i].size) {
-                list.add(Pair(i,j))
-            }
-        }
-        return list
-    }
-
-
-
-//    fun setRandomPlacement(ships : List<Ship>) {
-//
-//        while (true) {
-//
-//            var indexes = indexFields()
-//
-////            for (ship in ships) {
-////
-////                while (true) {
-////
-////                    var randColX = Random.nextInt(0, this.size)
-////                    var randColY = Random.nextInt(0, this.size)
-////
-////                    var n = ship.length
-////
-////                    if (randColY + n <= this.size && checkForBoat(randColX,randColY,randColY + n)) {
-////                        for(j in randColY until randColY + n) {
-////                            this[randColX][j].state = Field.State.SHIP
-////                            ship.fileds?.add(this[randColX][j])
-////                            tvBoard?.get(randColX)?.get(j)?.text = this[randColX][j].state.toString()
-////                        }
-////                    }
-////                    else if (randColX + n <= this.size && checkForBoat2(randColY,randColX,randColX + n)) {
-////                        for(i in randColX until randColX + n) {
-////                            this[i][randColY].state = Field.State.SHIP
-////                            ship.fileds?.add(this[i][randColY])
-////                            tvBoard?.get(i)?.get(randColY)?.text = this[i][randColY].state.toString()
-////                        }
-////                    }
-////                    else if (randColY - n >= 0 && checkForBoat(randColX,randColY - n, randColY)) {
-////                        for(j in randColY downTo randColY - n) {
-////                            this[randColX][j].state = Field.State.SHIP
-////                            ship.fileds?.add(this[randColX][j])
-////                            tvBoard?.get(randColX)?.get(j)?.text = this[randColX][j].state.toString()
-////                        }
-////                    }
-////                    else if (randColX - n >= 0 && checkForBoat2(randColY, randColX - n, randColX)) {
-////                        for(i in randColX downTo  randColX - n) {
-////                            this[i][randColY].state = Field.State.SHIP
-////                            ship.fileds?.add(this[i][randColY])
-////                            tvBoard?.get(i)?.get(randColY)?.text = this[i][randColY].state.toString()
-////                        }
-////                    }
-////                    continue
-////                }
-////            }
-//
-//            indexes.clear()
-//        }
-//
-//
-//    }
-
-
-//    fun setRandomPlacement(ships : List<Ship>){
-//
-//        restartBoard()
-//
-//        ships.sortedBy { ship ->  ship.health}
-//
-//        var randomPositions = mutableListOf<Pair<Int,Int>>()
-//
-//        var boardIsSet = false
-//
-//        do {
-//            repeat(10) {
-//                randomPositions.add(Pair(Random.nextInt(0, 10), Random.nextInt(0, 10)))
-//            }
-//
-//
-//            for ((i, j) in randomPositions) {
-//                if (this[i][j].state == Field.State.UNKNOWN && checkForBoat(i,j,j+1)) {
-//                    this[i][j].state = Field.State.SHIP
-//                }
-//                tvBoard?.get(i)?.get(j)?.text = this[i][j].state.toString()
-//                boardIsSet = true
-//            }
-//            randomPositions.clear()
-//        } while (!boardIsSet)
-//
-//    }
-
-    private fun removeIndexFieldsElements(array : MutableList<Pair<Int,Int>>, coord : Pair<Int,Int>) : MutableList<Pair<Int,Int>> {
-        val x = coord.first
-        val y = coord.second
-
-        for (i in max(x-1,0) until min(x+2,this.size)) {
-            for (j in max(y-1,0) until min(y+1,this.size)) {
-                array.remove(Pair(i,j))
-            }
-        }
-        return array
-    }
-
-    fun setRandomPlacement(ships : List<Ship>) {
-        restartBoard()
-
-        var array = indexFields()
-        val directions = arrayOf("horizontal","vertical")
-
-        for (ship in ships) {
-            while (true) {
-                var (x,y) = array.random()
-                val n = ship.length
-
-                val direction = directions.random()
-
-                if (direction.equals("horizontal") && y + n <= this.size &&  checkForBoat(x,y,y + n)) {
-                    for (j in y until y + n) {
-                        this[x][j].state = Field.State.SHIP
-                        tvBoard?.get(x)?.get(j)?.text = this[x][j].state.toString()
-                        removeIndexFieldsElements(array, Pair(x,j))
-                    }
-                        break
-                }
-                else if(direction.equals("vertical") && x + n <= this.size && checkForBoat2(y,x,x+n)) {
-                    for (i in x until x + n) {
-                        this[i][y].state = Field.State.SHIP
-                        tvBoard?.get(i)?.get(y)?.text = this[i][y].state.toString()
-                        removeIndexFieldsElements(array,Pair(i,y))
-                    }
-                    break
-                }
-            }
-        }
-    }
-
+    @SuppressLint("SetTextI18n")
     fun generateBoard(
         context: Context,
         layout: LinearLayout,
-        dimension: Int = this.size,
-        leftSide: Boolean = true
+        rightSide: Boolean = false
     ) {
+        val dimension = this.size
         val size = dimension + 1
         val tvBoard = Array<Array<TextView?>>(dimension) { arrayOfNulls(dimension) }
 
         for (i in 0 until size) {
-            val rowLayout = LinearLayout(context)
+            val rowLayout = LinearLayout(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    layout.layoutParams.width,
+                    layout.layoutParams.height / size
+                )
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }
             layout.addView(rowLayout)
 
-            rowLayout.orientation = LinearLayout.HORIZONTAL
-            rowLayout.layoutParams.width = layout.layoutParams.width
-            rowLayout.layoutParams.height = layout.layoutParams.height / size
-            rowLayout.gravity = Gravity.CENTER
-
             for (j in 0 until size) {
-                val tv = TextView(context)
-                if (i > 0 && j > 0) {
-                    tvBoard[i-1][j-1] = tv
+                val tv = TextView(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        rowLayout.layoutParams.width / size,
+                        rowLayout.layoutParams.height
+                    )
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.BLACK)
                 }
                 rowLayout.addView(tv)
 
-                tv.layoutParams.width = rowLayout.layoutParams.width / size
-                tv.layoutParams.height = rowLayout.layoutParams.height
-                tv.gravity = Gravity.CENTER
-                tv.setTextColor(Color.BLACK)
-
-                if (i > 1 && j > 1) {
-                    tv.background = BorderDrawable(top = false, left = false)
-                }
-                else if (i > 1 && j == 1) {
-                    tv.background = BorderDrawable(top = false)
-                }
-                else if (i == 1 && j > 1) {
-                    tv.background = BorderDrawable(left = false)
-                }
-                else if (i == 1 && j == 1) {
-                    tv.background = BorderDrawable()
-                }
-
                 if (i > 0 && j > 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.7f)
+                    tvBoard[i-1][j-1] = tv
+                }
+
+                tv.background = when {
+                    i > 1 && j > 1 -> BorderDrawable(top = false, left = false)
+                    i > 1 && j == 1 -> BorderDrawable(top = false)
+                    i == 1 && j > 1 -> BorderDrawable(left = false)
+                    i == 1 && j == 1 -> BorderDrawable()
+                    else -> tv.background
+                }
+
+                val height = tv.layoutParams.height
+                if (i > 0 && j > 0) {
+                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.7f)
                 }
                 else if (i == 0 && j > 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.5f)
+                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.5f)
                     tv.text = j.toString()
-                    // tv.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                 }
-                else if (i > 0 && j == 0) {
-                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tv.layoutParams.height * 0.5f)
+                else if (i > 0) {
+                    tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.5f)
                     tv.text = ('A' - 1 + i).toString()
                 }
-
-                // tv.setBackgroundColor(Color.rgb(i / (size - 1f), 0f, j / (size - 1f)))
             }
         }
 
-        if (!leftSide) {
-            for (child in layout.children) {
+        if (rightSide) {
+            layout.forEach { child ->
                 val row = child as LinearLayout
                 val view = row[0]
                 row.removeViewAt(0)
@@ -322,30 +107,145 @@ class Board(
             }
         }
 
-        this.tvBoard = tvBoard
+        forEachIndexed { i, j, field ->
+            field.apply {
+                view = tvBoard[i][j]
+                background = tvBoard[i][j]?.background as BorderDrawable
+                view?.text = this@Board[i][j].state.toString()
+            }
+        }
 
-//        for (i in 0 until this.size) {
-//            for (j in 0 until this[i].size) {
-//                this[i][j].view = tvBoard[i][j]
-//                this[i][j].view?.text = this[i][j].state.toString()
-//
-//                tvBoard[i][j]?.setOnClickListener {
-//                    if (active) {
-//                        if (this[i][j].state == Field.State.UNKNOWN) {
-//                            this[i][j].state = Field.State.EMPTY
-//                        }
-//                        else if (this[i][j].state == Field.State.EMPTY) {
-//                            this[i][j].state = Field.State.SHIP
-//                        }
-//                        else if (this[i][j].state == Field.State.SHIP) {
-//                            this[i][j].state = Field.State.DESTROYED_SHIP
-//                        }
-//                        else if (this[i][j].state == Field.State.DESTROYED_SHIP) {
-//                            this[i][j].state = Field.State.UNKNOWN
-//                        }
-//                    }
-//                }
-//            }
-//        }
+        setListeners(layout)
+    }
+
+    fun isAvailable(top: Int, bottom: Int, left: Int, right: Int) : Boolean {
+        for (i in coerceIn(top)..coerceIn(bottom)) {
+            for (j in coerceIn(left)..coerceIn(right)) {
+                if (this[i][j].isShip()) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    fun coerceIn(index: Int) : Int {
+        return index.coerceIn(0, size - 1)
+    }
+
+    fun isInside(index: Int) : Boolean {
+        return index in 0 until size
+    }
+    
+    fun isInside(x: Float, y: Float) : Boolean {
+        if (layout == null) return false
+        val width = this[0][0].view?.width ?: 0
+        val height = this[0][0].view?.height ?: 0
+        
+        val layoutLocation = IntArray(2)
+        layout.getLocationOnScreen(layoutLocation)
+        val (layoutX, layoutY) = layoutLocation
+        
+        return Rect(
+            layoutX + if (rightSide) 0 else width,
+            layoutY + height,
+            layoutX + layout.width - if (rightSide) width else 0,
+            layoutY + layout.height
+        ).contains(x.toInt(), y.toInt())
+    }
+
+    inline fun forEach(action: (field: Field) -> Unit) {
+        forEachIndexed { _, _, field ->
+            action(field)
+        }
+    }
+
+    inline fun forEachIndexed(action: (i: Int, j: Int, field: Field) -> Unit) {
+        for (i in 0 until this.size) {
+            for (j in 0 until this.size) {
+                action(i, j, this[i][j])
+            }
+        }
+    }
+
+    inline fun forEach(action: (field: Field, view: TextView) -> Unit) {
+        forEachIndexed { _, _, field, view ->
+            action(field, view)
+        }
+    }
+
+    inline fun forEachIndexed(action: (i: Int, j: Int, field: Field, view: TextView) -> Unit) {
+        for (i in 0 until this.size) {
+            for (j in 0 until this.size) {
+                if (this[i][j].view != null) {
+                    action(i, j, this[i][j], this[i][j].view as TextView)
+                }
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setListeners(layout: LinearLayout) {
+        layout.setOnTouchListener { _, event ->
+            if (!active) return@setOnTouchListener false
+
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    forEach { field, tv ->
+                        val location = IntArray(2)
+                        tv.getLocationOnScreen(location)
+                        val (x, y) = location
+
+                        if (!isInside(event.rawX, event.rawY)) {
+                            field.background?.color = Color.TRANSPARENT
+                        }
+                        else if (event.rawX >= x && event.rawX <= x + tv.width &&
+                            event.rawY >= y && event.rawY <= y + tv.height) {
+
+                            field.background?.color = Color.DKGRAY
+                        }
+                        else if ((event.rawX >= x && event.rawX <= x + tv.width) ||
+                            (event.rawY >= y && event.rawY <= y + tv.height)) {
+
+                            field.background?.color = Color.LTGRAY
+                        }
+                        else {
+                            field.background?.color = Color.TRANSPARENT
+                        }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    forEach { field, tv ->
+                        field.background?.color = Color.TRANSPARENT
+
+                        val location = IntArray(2)
+                        tv.getLocationOnScreen(location)
+                        val (x, y) = location
+
+                        if (event.rawX >= x && event.rawX <= x + tv.width &&
+                            event.rawY >= y && event.rawY <= y + tv.height) {
+
+                            when (field.state) {
+                                Field.State.UNKNOWN -> {
+                                    field.state = Field.State.EMPTY
+                                }
+                                Field.State.EMPTY -> {
+                                    field.state = Field.State.SHIP
+                                }
+                                Field.State.SHIP -> {
+                                    field.state = Field.State.DESTROYED_SHIP
+                                }
+                                Field.State.DESTROYED_SHIP -> {
+                                    field.state = Field.State.UNKNOWN
+                                }
+                            }
+                        }
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
     }
 }

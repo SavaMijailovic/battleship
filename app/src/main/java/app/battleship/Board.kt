@@ -10,6 +10,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.forEach
 import androidx.core.view.get
+import kotlin.math.max
+import kotlin.math.min
 
 class Board(
     size: Int,
@@ -182,6 +184,28 @@ class Board(
                 }
             }
         }
+    }
+
+    // bilo mi je lakse da koristim ove moje funkcije za neke stvari
+    fun checkForBoat(i1 : Int,j1 : Int, j2 : Int) : Boolean {
+        for (i in max(i1-1,0) until min(i1+2,this.size)) {
+            for (j in max(j1-1,0) until min(j2+1,this.size)) {
+                if (this[i][j].state == Field.State.SHIP)
+                    return false
+            }
+        }
+        return true
+    }
+
+    // isto vazi i za ovu funkciju
+    fun checkForBoat2(j1 : Int, i1: Int, i2: Int) : Boolean{
+        for (j in max(j1-1,0) until min(j1+2,this.size)) {
+            for (i in max(i1-1,0) until min(i2+1,this.size)) {
+                if (this[i][j].state == Field.State.SHIP)
+                    return false
+            }
+        }
+        return true
     }
 
     @SuppressLint("ClickableViewAccessibility")

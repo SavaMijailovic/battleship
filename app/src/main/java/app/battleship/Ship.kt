@@ -9,6 +9,9 @@ class Ship(val size: Int, var view: LinearLayout? = null) {
     var health: Int = 0
         set(value) { field = value.coerceAtLeast(0) }
 
+    // koristimo kako bi prolazili kroz svaki razliciti smer nakon klika
+    var direction : Int = 0
+
     var fields: TreeSet<Field> = TreeSet()
 
     var horizontal: Boolean = true
@@ -47,40 +50,93 @@ class Ship(val size: Int, var view: LinearLayout? = null) {
             return
         }
 
-        val rotationField = if (horizontal) fields.first() else fields.last()
-        val (x, y) = Pair(rotationField.x, rotationField.y)
+        // svaki smer posmatramo kao broj od 0 do 3
+        val mod = direction % 4
 
-        if (horizontal) {
-            val start = y - size + 1
+        direction += 1
 
-            if (!board.isInside(start)) {
+        val directionField = if (!horizontal) fields.last() else fields.first()
+        val (x,y) = Pair(directionField.x,directionField.y)
+
+
+        // TODO: implementirati tako da ukoliko ne nadjemo odgovarajuc smer nakon jednog klika, program nastavi da trazi narednu mogucu rotaciju
+
+        if (mod == 0) {
+            val edge = y - size + 1
+
+            if (!board.isInside(edge)){
                 return
             }
-            if (!board.isAvailable(start - 1, y - 1, x - 1, x + 1)) {
+
+            if (!board.isAvailable(edge - 1, y - 1, x - 1, x + 1)) {
                 return
             }
 
             clear()
-            for (i in start .. y) {
+            for (i in edge .. y) {
                 add(board[i][x])
             }
+
             horizontal = false
         }
-        else {
-            val end = x + size - 1
 
-            if (!board.isInside(end)) {
+        if (mod == 1) {
+            val edge = x - size + 1
+
+            if (!board.isInside(edge)){
                 return
             }
-            if (!board.isAvailable(y + 1, y - 1, x + 1, end + 1)) {
+
+            if (!board.isAvailable(y - 1, y + 1, edge - 1, x - 1)) {
                 return
             }
 
             clear()
-            for (j in x .. end) {
+            for (i in edge .. x) {
+                add(board[y][i])
+            }
+
+            horizontal = false
+        }
+
+        if (mod == 2) {
+            val edge = y + size - 1
+
+            if (!board.isInside(edge)){
+                return
+            }
+
+            if (!board.isAvailable(y + 1, edge + 1, x - 1, x + 1)) {
+                return
+            }
+
+            clear()
+            for (i in y .. edge) {
+                add(board[i][x])
+            }
+
+            horizontal = true
+
+        }
+
+        if (mod == 3) {
+            val edge = x + size - 1
+
+            if (!board.isInside(edge)){
+                return
+            }
+
+            if (!board.isAvailable(y - 1, y + 1, x + 1, edge + 1))  {
+                return
+            }
+
+            clear()
+            for (j in x .. edge) {
                 add(board[y][j])
             }
+
             horizontal = true
         }
+
     }
 }

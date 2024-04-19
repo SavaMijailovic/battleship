@@ -9,8 +9,11 @@ import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.system.exitProcess
 
 class ShipsPlacementActivity : AppCompatActivity() {
@@ -56,6 +59,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
             setShipsListeners(ships)
             setBoardListeners(board)
+            setRandomButtonListener(ships, board)
         }
         catch (e: Exception) {
             e.printStackTrace(System.out)
@@ -101,6 +105,18 @@ class ShipsPlacementActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // Klikom za randomizaciju postavimo nasumicnu poziciju za sve brodove
+    private fun setRandomButtonListener(ships : List<Ship>, board : Board) {
+        val randomButton = findViewById<Button>(R.id.btShipsPlacement)
+        randomButton.setOnClickListener {
+            randomPlacement(ships,board)
+            for (ship in ships){
+                ship.view?.visibility = View.INVISIBLE
+            }
+        }
+        randomButton.text = "\uD83C\uDFB2"
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -187,6 +203,57 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
 
                     else -> false
+                }
+            }
+        }
+    }
+
+    private fun removeIndexFieldsElements(list : MutableList<Pair<Int,Int>>, x : Int, y : Int) : MutableList<Pair<Int,Int>> {
+        for (i in max(x-1,0) until min(x+2,10)) {
+            for (j in max(y-1,0) until min(y+1,10)) {
+                list.remove(Pair(i,j))
+            }
+        }
+        return list
+    }
+
+    fun randomPlacement(ships : List<Ship>, board : Board) {
+
+        // inicijalizujemo listu parova prirodnih brojeva  { (x,y) | x ∈ [0,9], y ∈ [0,9] }
+        var list : MutableList<Pair<Int, Int>> = mutableListOf()
+        for (i in 0 until board.size) {
+            for (j in 0 until board.size) {
+                list.add(Pair(i,j))
+            }
+        }
+
+        val directions = arrayOf("horizontal","vertical")
+
+        for (ship in ships) {
+            ship.clear()
+            while (true) {
+                // biramo nasumicno poziciju u nasoj listi
+                val (x,y) = list.random()
+                val n = ship.size
+
+                // nasumicno biramo pravac
+                val direction = directions.random()
+
+                if (direction.equals("horizontal") && y + n <= board.size && board.checkForBoat(x,y,y+n)){
+                    for (j in y until y + n) {
+                        ship.add(board[x][j])
+                        // nakon sto postavimo brod na tabli izbrisemo iz liste sve parove koje pripadaju brodu
+                        // i sve one u njegovoj okolini kako ne bi izvukli nevalidno polje
+                        removeIndexFieldsElements(list,x,j)
+                    }
+                    break
+                }
+                else if (direction.equals("vertical") && x + n <= board.size && board.checkForBoat2(y,x,x+n)){
+                    for (i in x until x + n) {
+                        ship.add(board[i][y])
+                        removeIndexFieldsElements(list,i,y)
+                    }
+                    break
                 }
             }
         }

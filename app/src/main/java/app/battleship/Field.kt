@@ -5,11 +5,11 @@ import java.util.Objects
 import kotlin.math.abs
 
 class Field(
-    var x: Int,
-    var y: Int,
+    var row: Int,
+    var col: Int,
     state: State = State.UNKNOWN,
     var view: TextView? = null,
-    var ship: Ship? = null
+    ship: Ship? = null
 ) : Comparable<Field> {
 
     var state: State = state
@@ -24,31 +24,40 @@ class Field(
             view?.background = value
         }
 
+    var ship: Ship? = null
+        set(value) {
+            field = value
+            state = if (field != null) State.SHIP else State.UNKNOWN
+        }
+
     init {
         this.state = state
+        this.ship = ship
     }
 
+    operator fun component1(): Int = row
+    operator fun component2(): Int = col
+
     override fun compareTo(other: Field): Int {
-        return if (x == other.x) y.compareTo(other.y) else x.compareTo(other.x)
+        return if (col == other.col) row.compareTo(other.row) else col.compareTo(other.col)
     }
 
     override fun equals(other: Any?): Boolean {
-        if (other !is Field) {
-            return false
-        }
+        if (this === other) return true
+        if (other !is Field) return false
         return this.compareTo(other) == 0
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(x, y)
+        return Objects.hash(row, col)
     }
 
     fun distanceTo(other: Field): Int {
-        return abs(x - other.x) + abs(y - other.y)
+        return abs(row - other.row) + abs(col - other.col)
     }
 
     override fun toString(): String {
-        return "($x, $y)"
+        return "($row, $col)"
     }
 
     fun isShip() : Boolean {

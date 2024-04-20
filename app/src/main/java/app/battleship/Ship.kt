@@ -9,8 +9,7 @@ class Ship(val size: Int, var view: LinearLayout? = null) {
     var health: Int = 0
         set(value) { field = value.coerceAtLeast(0) }
 
-    // koristimo kako bi prolazili kroz svaki razliciti smer nakon klika
-    var direction : Int = 0
+    private var direction: Direction = Direction.RIGHT
 
     var fields: TreeSet<Field> = TreeSet()
 
@@ -21,24 +20,19 @@ class Ship(val size: Int, var view: LinearLayout? = null) {
     }
 
     fun add(field: Field) {
-        field.apply {
-            state = Field.State.SHIP
-            ship = this@Ship
-        }
+        field.ship = this
         fields.add(field)
     }
 
     fun clear() {
-        fields.forEach { field ->
-            field.state = Field.State.UNKNOWN
-            field.ship = null
-        }
+        fields.forEach { field -> field.ship = null }
         fields.clear()
     }
 
     fun show() {
         view?.visibility = View.VISIBLE
         horizontal = true
+        direction = Direction.RIGHT
     }
 
     fun hide() {
@@ -46,97 +40,38 @@ class Ship(val size: Int, var view: LinearLayout? = null) {
     }
 
     fun rotate(board: Board) {
-        if (fields.isEmpty() || size == 1) {
-            return
+        if (fields.isEmpty() || size == 1) return
+
+        val isFirst = direction == Direction.RIGHT || direction == Direction.BOTTOM
+        val rotationField = if (isFirst) fields.first() else fields.last()
+        val (row, col) = rotationField
+
+        val startDirection = direction
+        clear()
+
+        do {
+            direction = direction.next()
+
+            val success = when (direction) {
+                Direction.RIGHT -> board.set(rotationField, Field(row, col + size - 1), this)
+                Direction.TOP -> board.set(Field(row - size + 1, col), rotationField, this)
+                Direction.LEFT -> board.set(Field(row, col - size + 1), rotationField, this)
+                Direction.BOTTOM -> board.set(rotationField, Field(row + size - 1, col), this)
+            }
+
+        } while (direction != startDirection && !success)
+    }
+
+    enum class Direction {
+        RIGHT, TOP, LEFT, BOTTOM;
+
+        fun next() : Direction {
+            return when (this) {
+                RIGHT -> TOP
+                TOP -> LEFT
+                LEFT -> BOTTOM
+                else -> RIGHT
+            }
         }
-
-        // svaki smer posmatramo kao broj od 0 do 3
-        val mod = direction % 4
-
-        direction += 1
-
-        val directionField = if (!horizontal) fields.last() else fields.first()
-        val (x,y) = Pair(directionField.x,directionField.y)
-
-
-        // TODO: implementirati tako da ukoliko ne nadjemo odgovarajuc smer nakon jednog klika, program nastavi da trazi narednu mogucu rotaciju
-
-        if (mod == 0) {
-            val edge = y - size + 1
-
-            if (!board.isInside(edge)){
-                return
-            }
-
-            if (!board.isAvailable(edge - 1, y - 1, x - 1, x + 1)) {
-                return
-            }
-
-            clear()
-            for (i in edge .. y) {
-                add(board[i][x])
-            }
-
-            horizontal = false
-        }
-
-        if (mod == 1) {
-            val edge = x - size + 1
-
-            if (!board.isInside(edge)){
-                return
-            }
-
-            if (!board.isAvailable(y - 1, y + 1, edge - 1, x - 1)) {
-                return
-            }
-
-            clear()
-            for (i in edge .. x) {
-                add(board[y][i])
-            }
-
-            horizontal = false
-        }
-
-        if (mod == 2) {
-            val edge = y + size - 1
-
-            if (!board.isInside(edge)){
-                return
-            }
-
-            if (!board.isAvailable(y + 1, edge + 1, x - 1, x + 1)) {
-                return
-            }
-
-            clear()
-            for (i in y .. edge) {
-                add(board[i][x])
-            }
-
-            horizontal = true
-
-        }
-
-        if (mod == 3) {
-            val edge = x + size - 1
-
-            if (!board.isInside(edge)){
-                return
-            }
-
-            if (!board.isAvailable(y - 1, y + 1, x + 1, edge + 1))  {
-                return
-            }
-
-            clear()
-            for (j in x .. edge) {
-                add(board[y][j])
-            }
-
-            horizontal = true
-        }
-
     }
 }

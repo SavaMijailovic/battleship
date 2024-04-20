@@ -12,9 +12,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.system.exitProcess
+import kotlin.random.Random
 
 class ShipsPlacementActivity : AppCompatActivity() {
 
@@ -50,27 +48,34 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
 
-        try {
-            val board = Board(size, this, layoutBoard)
-            // val board = Board(size, this, layoutBoard, rightSide = true, active = true)
-            // val boardRight = Board(size - 2, this, layoutShips, rightSide = true, active = true)
+        val board = Board(size, this, layoutBoard)
+        val ships = generateShips(layoutShips)
 
-            val ships = generateShips(layoutShips)
-
-            setShipsListeners(ships)
-            setBoardListeners(board)
-            setRandomButtonListener(ships, board)
-        }
-        catch (e: Exception) {
-            e.printStackTrace(System.out)
-            exitProcess(1)
-        }
-
+        setShipsListeners(ships)
+        setBoardListeners(board)
+        setRandomButtonListener(board, ships)
+        setClearButtonListener(board, ships)
     }
 
-    private var draggingStarted: Boolean = false
+    private var draggingStarted = false
+    private var draggingX = 0f
+    private var draggingY = 0f
+    private var droppedSuccessfully = false
     private var activeShip: Ship? = null
     private var offset = 0
+
+    private fun setRandomButtonListener(board: Board, ships: List<Ship>) {
+        findViewById<Button>(R.id.btRandomPlacement).setOnClickListener {
+            randomPlacement(board, ships)
+        }
+    }
+
+    private fun setClearButtonListener(board: Board, ships: List<Ship>) {
+        findViewById<Button>(R.id.btClear).setOnClickListener {
+            board.forEach { field -> field.ship = null }
+            ships.forEach { ship -> ship.clear(); ship.show() }
+        }
+    }
 
     private fun setShipsListeners(ships: List<Ship>) {
         setShipsDragListeners(ships)
@@ -89,14 +94,14 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     DragEvent.ACTION_DRAG_STARTED -> {
                         if (ship == activeShip) {
                             ship.hide()
+                            droppedSuccessfully = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
-                        if (!event.result) {
+                        if (!event.result || !droppedSuccessfully) {
                             activeShip?.show()
-                            activeShip = null
                         }
                         true
                     }
@@ -105,18 +110,6 @@ class ShipsPlacementActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    // Klikom za randomizaciju postavimo nasumicnu poziciju za sve brodove
-    private fun setRandomButtonListener(ships : List<Ship>, board : Board) {
-        val randomButton = findViewById<Button>(R.id.btShipsPlacement)
-        randomButton.setOnClickListener {
-            randomPlacement(ships,board)
-            for (ship in ships){
-                ship.view?.visibility = View.INVISIBLE
-            }
-        }
-        randomButton.text = "\uD83C\uDFB2"
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -170,13 +163,14 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     DragEvent.ACTION_DRAG_STARTED -> {
                         if (field.isShip() && field.ship == activeShip) {
                             field.ship?.clear()
+                            droppedSuccessfully = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
                         field.background?.color = Color.TRANSPARENT
-                        if (!event.result) {
+                        if (!event.result || !droppedSuccessfully) {
                             activeShip?.show()
                         }
                         true
@@ -195,11 +189,13 @@ class ShipsPlacementActivity : AppCompatActivity() {
                         }
                         true
                     }
+
                     DragEvent.ACTION_DROP -> {
-                        processDragging(board, field) { field, ship ->
+                        droppedSuccessfully = processDragging(board, field) { field, ship ->
                             field.background?.color = Color.TRANSPARENT
                             ship.add(field)
                         }
+                        droppedSuccessfully
                     }
 
                     else -> false
@@ -208,50 +204,35 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
     }
 
-    private fun removeIndexFieldsElements(list : MutableList<Pair<Int,Int>>, x : Int, y : Int) : MutableList<Pair<Int,Int>> {
-        for (i in max(x-1,0) until min(x+2,10)) {
-            for (j in max(y-1,0) until min(y+1,10)) {
-                list.remove(Pair(i,j))
-            }
-        }
-        return list
-    }
-
-    fun randomPlacement(ships : List<Ship>, board : Board) {
-
-        // inicijalizujemo listu parova prirodnih brojeva  { (x,y) | x ∈ [0,9], y ∈ [0,9] }
-        var list : MutableList<Pair<Int, Int>> = mutableListOf()
+    private fun randomPlacement(board: Board, ships: List<Ship>) {
+        val list: MutableList<Pair<Int, Int>> = mutableListOf()
         for (i in 0 until board.size) {
             for (j in 0 until board.size) {
-                list.add(Pair(i,j))
+                list.add(Pair(i, j))
             }
         }
 
-        val directions = arrayOf("horizontal","vertical")
-
-        for (ship in ships) {
+        ships.forEach { ship ->
             ship.clear()
+            ship.hide()
+
             while (true) {
-                // biramo nasumicno poziciju u nasoj listi
-                val (x,y) = list.random()
-                val n = ship.size
+                val (row, col) = list.random()
 
-                // nasumicno biramo pravac
-                val direction = directions.random()
+                val start = Field(row, col)
 
-                if (direction.equals("horizontal") && y + n <= board.size && board.checkForBoat(x,y,y+n)){
-                    for (j in y until y + n) {
-                        ship.add(board[x][j])
-                        // nakon sto postavimo brod na tabli izbrisemo iz liste sve parove koje pripadaju brodu
-                        // i sve one u njegovoj okolini kako ne bi izvukli nevalidno polje
-                        removeIndexFieldsElements(list,x,j)
-                    }
-                    break
+                val end = if (Random.nextBoolean()) {
+                    Field(row, col + ship.size - 1)
                 }
-                else if (direction.equals("vertical") && x + n <= board.size && board.checkForBoat2(y,x,x+n)){
-                    for (i in x until x + n) {
-                        ship.add(board[i][y])
-                        removeIndexFieldsElements(list,i,y)
+                else {
+                    Field(row + ship.size - 1, col)
+                }
+
+                if (board.set(start, end, ship)) {
+                    for (i in board.coerceIn(start.row - 1) .. board.coerceIn(end.row + 1)) {
+                        for (j in board.coerceIn(start.col - 1) .. board.coerceIn(end.col + 1)) {
+                            list.remove(Pair(i, j))
+                        }
                     }
                     break
                 }
@@ -259,38 +240,18 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
     }
 
-    private inline fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
+    private fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
         if (activeShip == null) return false
         val ship = activeShip as Ship
 
-        val (start, end) = if (ship.horizontal) {
-            Pair(field.x - offset, field.x - offset + ship.size - 1)
-        }
-        else {
-            Pair(field.y - offset, field.y - offset + ship.size - 1)
-        }
-
-        if (!board.isInside(start) || !board.isInside(end)) {
-            return false
-        }
-
         if (ship.horizontal) {
-            if (!board.isAvailable(field.y - 1,field.y + 1, start - 1, end + 1)) {
-                return false
-            }
-            for (k in start .. end) {
-                action(board[field.y][k], ship)
-            }
+            val (start, end) = Pair(field.col - offset, field.col - offset + ship.size - 1)
+            return board.set(Field(field.row, start), Field(field.row, end), ship, action)
         }
         else {
-            if (!board.isAvailable(start - 1, end + 1, field.x - 1, field.x + 1)) {
-                return false
-            }
-            for (k in start .. end) {
-                action(board[k][field.x], ship)
-            }
+            val (start, end) = Pair(field.row - offset, field.row - offset + ship.size - 1)
+            return board.set(Field(start, field.col), Field(end, field.col), ship, action)
         }
-        return true
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -304,11 +265,13 @@ class ShipsPlacementActivity : AppCompatActivity() {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         draggingStarted = false
+                        draggingX = event.rawX
+                        draggingY = event.rawY
                         true
                     }
 
                     MotionEvent.ACTION_MOVE -> {
-                        if (!draggingStarted) {
+                        if (!draggingStarted && (event.rawX != draggingX || event.rawY != draggingY)) {
                             draggingStarted = true
                             startDraggingField(field, event)
                         }

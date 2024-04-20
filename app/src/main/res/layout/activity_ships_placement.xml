@@ -47,7 +47,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 android:layout_gravity="center">
             <Button
-                    android:id="@+id/btShipsPlacement"
+                    android:id="@+id/btRandomPlacement"
                     android:text="&lt;"
                     android:textAllCaps="false"
                     android:textSize="25sp"
@@ -58,6 +58,19 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"/>
+            <Button
+                    android:id="@+id/btClear"
+                    android:text="&gt;"
+                    android:textAllCaps="false"
+                    android:textSize="25sp"
+                    android:layout_width="60dp"
+                    android:layout_height="0dp"
+                    android:background="@color/buttonColor"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/btRandomPlacement"
+                    android:layout_marginStart="20dp"/>
             <Button
                     android:id="@+id/btBattle"
                     android:text="Battle"

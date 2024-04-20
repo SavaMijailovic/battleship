@@ -10,14 +10,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.forEach
 import androidx.core.view.get
-import kotlin.math.max
-import kotlin.math.min
 
 class Board(
     size: Int,
     context: Context? = null,
     private val layout: LinearLayout? = null,
-    val rightSide: Boolean = false,
+    private val rightSide: Boolean = false,
     var active: Boolean = false
 ) {
 
@@ -29,7 +27,7 @@ class Board(
     val size: Int = size.coerceIn(MIN_SIZE, MAX_SIZE)
 
     private var fields: Array<Array<Field>> =
-        Array(this.size) { i -> Array(this.size) { j -> Field(j, i) } }
+        Array(this.size) { i -> Array(this.size) { j -> Field(i, j) } }
 
     init {
         if (context != null && layout != null) {
@@ -138,6 +136,10 @@ class Board(
     fun isInside(index: Int) : Boolean {
         return index in 0 until size
     }
+
+    fun isInside(field: Field) : Boolean {
+        return isInside(field.row) && isInside(field.col)
+    }
     
     fun isInside(x: Float, y: Float) : Boolean {
         if (layout == null) return false
@@ -186,24 +188,31 @@ class Board(
         }
     }
 
-    // bilo mi je lakse da koristim ove moje funkcije za neke stvari
-    fun checkForBoat(i1 : Int,j1 : Int, j2 : Int) : Boolean {
-        for (i in max(i1-1,0) until min(i1+2,this.size)) {
-            for (j in max(j1-1,0) until min(j2+1,this.size)) {
-                if (this[i][j].state == Field.State.SHIP)
-                    return false
+    fun set(start: Field, end: Field, ship: Ship,
+            action: (Field, Ship) -> Unit = { f, s -> s.add(f) }) : Boolean {
+
+        if (!isInside(start) || !isInside(end)) {
+            return false
+        }
+
+        if (!isAvailable(start.row - 1, end.row + 1, start.col - 1, end.col + 1)) {
+            return false
+        }
+
+        if (start.row == end.row) {
+            ship.horizontal = true
+            for (col in start.col .. end.col) {
+                action(this[start.row][col], ship)
             }
         }
-        return true
-    }
-
-    // isto vazi i za ovu funkciju
-    fun checkForBoat2(j1 : Int, i1: Int, i2: Int) : Boolean{
-        for (j in max(j1-1,0) until min(j1+2,this.size)) {
-            for (i in max(i1-1,0) until min(i2+1,this.size)) {
-                if (this[i][j].state == Field.State.SHIP)
-                    return false
+        else if (start.col == end.col) {
+            ship.horizontal = false
+            for (row in start.row .. end.row) {
+                action(this[row][start.col], ship)
             }
+        }
+        else {
+            return false
         }
         return true
     }

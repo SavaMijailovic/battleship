@@ -1,17 +1,21 @@
 package app.battleship
 
 import android.annotation.SuppressLint
-import android.graphics.*
-import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Color
+import android.graphics.Point
 import android.os.Bundle
+import android.text.Selection
 import android.util.TypedValue
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import kotlin.random.Random
 
 class ShipsPlacementActivity : AppCompatActivity() {
@@ -25,55 +29,127 @@ class ShipsPlacementActivity : AppCompatActivity() {
         setContentView(R.layout.activity_ships_placement)
         hideSystemUI(window)
 
+        resize()
+
         val size = 10
 
-        val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard).apply {
-            layoutParams.apply {
-                width = width / (size + 1) * (size + 1)
-                height = height / (size + 1) * (size + 1)
-            }
-        }
-
-        findViewById<LinearLayout>(R.id.layoutRight).apply {
-            layoutParams.apply {
-                width = layoutBoard.layoutParams.width
-                height = layoutBoard.layoutParams.height
-            }
-        }
-
-        val layoutShips = findViewById<LinearLayout>(R.id.layoutShips).apply {
-            layoutParams.apply {
-                width = width / (size + 1) * (size + 1)
-                height = height / (size - 1) * (size - 1)
-            }
-        }
+        val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard)
+        val layoutShips = findViewById<LinearLayout>(R.id.layoutShips)
 
         val board = Board(size, this, layoutBoard)
         val ships = generateShips(layoutShips)
 
         setShipsListeners(ships)
         setBoardListeners(board)
-        setRandomButtonListener(board, ships)
-        setClearButtonListener(board, ships)
+        setButtonListeners(board, ships)
+        setTextViewListeners()
     }
 
     private var draggingStarted = false
     private var draggingX = 0f
     private var draggingY = 0f
-    private var droppedSuccessfully = false
-    private var activeShip: Ship? = null
+    private var draggingDropped = false
+    private var draggingShip: Ship? = null
     private var offset = 0
 
-    private fun setRandomButtonListener(board: Board, ships: List<Ship>) {
-        findViewById<Button>(R.id.btRandomPlacement).setOnClickListener {
-            randomPlacement(board, ships)
+    private fun resize() {
+
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        val nbh = if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+
+        val w = resources.displayMetrics.widthPixels / 28
+        val h = (resources.displayMetrics.heightPixels + nbh) / 14
+        val len = if (w < h) w else h
+
+        arrayOf(R.id.tvPlayer1, R.id.tvPlayer2).forEach { id ->
+            findViewById<TextView>(id).apply {
+                layoutParams.apply {
+                    width = 11 * len
+                    height = len
+                }
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutBoard).apply {
+            layoutParams.apply {
+                width = 11 * len
+                height = 11 * len
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutShips).apply {
+            layoutParams.apply {
+                width = 11 * len
+                height = 9 * len
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutMiddle).apply {
+            layoutParams.apply {
+                width = 2 * len
+                height = 12 * len
+            }
+        }
+
+        findViewById<ConstraintLayout>(R.id.layoutButtons).apply {
+            layoutParams.apply {
+                width = 11 * len
+                height = 2 * len
+            }
+        }
+
+        findViewById<Button>(R.id.btRandomPlacement).apply {
+            layoutParams.apply {
+                width = 2 * len
+                height = 2 * len
+            }
+        }
+
+        findViewById<Button>(R.id.btClear).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * len
+                height = 2 * len
+                leftMargin = len
+            }
+        }
+
+        findViewById<Button>(R.id.btBattle).apply {
+            layoutParams.apply {
+                width = 3 * len
+                height = 2 * len
+            }
+        }
+
+        findViewById<ImageButton>(R.id.btBack).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * len
+                height = 2 * len
+                topMargin = len
+            }
         }
     }
 
-    private fun setClearButtonListener(board: Board, ships: List<Ship>) {
+    private fun setButtonListeners(board: Board, ships: List<Ship>) {
+        findViewById<ImageButton>(R.id.btBack).setOnClickListener {
+            finish()
+        }
+
+        findViewById<Button>(R.id.btRandomPlacement).setOnClickListener {
+            randomPlacement(board, ships)
+        }
+
         findViewById<Button>(R.id.btClear).setOnClickListener {
             board.forEach { field -> field.ship = null }
             ships.forEach { ship -> ship.clear(); ship.show() }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setTextViewListeners() {
+        findViewById<TextView>(R.id.tvPlayer1).apply {
+            viewTreeObserver.addOnGlobalLayoutListener {
+                Selection.setSelection(editableText, editableText.length)
+            }
         }
     }
 
@@ -92,16 +168,16 @@ class ShipsPlacementActivity : AppCompatActivity() {
             ship.view?.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (ship == activeShip) {
+                        if (ship == draggingShip) {
                             ship.hide()
-                            droppedSuccessfully = false
+                            draggingDropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
-                        if (!event.result || !droppedSuccessfully) {
-                            activeShip?.show()
+                        if (!event.result || !draggingDropped) {
+                            draggingShip?.show()
                         }
                         true
                     }
@@ -151,7 +227,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
 
         this.offset = (x / (shadowView.width.toDouble() / ship.size)).toInt()
-        this.activeShip = ship
+        this.draggingShip = ship
 
         view.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
@@ -161,17 +237,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
             view.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (field.isShip() && field.ship == activeShip) {
+                        if (field.isShip() && field.ship == draggingShip) {
                             field.ship?.clear()
-                            droppedSuccessfully = false
+                            draggingDropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
                         field.background?.color = Color.TRANSPARENT
-                        if (!event.result || !droppedSuccessfully) {
-                            activeShip?.show()
+                        if (!event.result || !draggingDropped) {
+                            draggingShip?.show()
                         }
                         true
                     }
@@ -191,11 +267,11 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
 
                     DragEvent.ACTION_DROP -> {
-                        droppedSuccessfully = processDragging(board, field) { field, ship ->
+                        draggingDropped = processDragging(board, field) { field, ship ->
                             field.background?.color = Color.TRANSPARENT
                             ship.add(field)
                         }
-                        droppedSuccessfully
+                        draggingDropped
                     }
 
                     else -> false
@@ -241,8 +317,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
     }
 
     private fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
-        if (activeShip == null) return false
-        val ship = activeShip as Ship
+        if (draggingShip == null) return false
+        val ship = draggingShip as Ship
 
         if (ship.horizontal) {
             val (start, end) = Pair(field.col - offset, field.col - offset + ship.size - 1)
@@ -341,7 +417,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
 
         this.offset = offset
-        this.activeShip = ship
+        this.draggingShip = ship
 
         field.view?.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }

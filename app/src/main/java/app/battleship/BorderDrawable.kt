@@ -22,6 +22,7 @@ class BorderDrawable(
 
     override fun draw(canvas: Canvas) {
         val borderPaint = Paint().apply {
+            isAntiAlias = true
             strokeWidth = borderWidth
             color = borderColor
             style = borderStyle

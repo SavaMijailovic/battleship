@@ -11,10 +11,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         hideSystemUI(window)
 
-        val btSingleplayer = findViewById<Button>(R.id.btSingleplayer)
-        btSingleplayer.setOnClickListener {
-            val intent = Intent(this, ShipsPlacementActivity::class.java)
-            startActivity(intent)
+        findViewById<Button>(R.id.btSingleplayer).setOnClickListener {
+            GameManager.gamemode = Gamemode.SINGLEPLAYER
+            startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btMultiplayerDevice).setOnClickListener {
+            GameManager.gamemode = Gamemode.MULTIPLAYER_DEVICE
+            startActivity(Intent(this, ShipsPlacementActivity::class.java))
         }
     }
 }

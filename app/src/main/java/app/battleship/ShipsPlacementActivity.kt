@@ -1,6 +1,7 @@
 package app.battleship
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
@@ -16,13 +17,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
-import kotlin.random.Random
 
 class ShipsPlacementActivity : AppCompatActivity() {
-
-    companion object {
-        const val DIMENSION = 10
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,19 +27,23 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         resize()
 
-        val size = 10
-
         val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard)
         val layoutShips = findViewById<LinearLayout>(R.id.layoutShips)
 
-        val board = Board(size, this, layoutBoard)
+        val board = Board(context = this, layout = layoutBoard)
         val ships = generateShips(layoutShips)
+
+        setPlayers(board)
 
         setShipsListeners(ships)
         setBoardListeners(board)
         setButtonListeners(board, ships)
         setTextViewListeners()
     }
+
+    private val gamemode = GameManager.gamemode
+    private var player1: Player? = GameManager.player1
+    private var player2: Player? = GameManager.player2
 
     private var draggingStarted = false
     private var draggingX = 0f
@@ -52,81 +52,70 @@ class ShipsPlacementActivity : AppCompatActivity() {
     private var draggingShip: Ship? = null
     private var offset = 0
 
-    private fun resize() {
+    private fun setPlayers(board: Board) {
+        when (gamemode) {
+            Gamemode.SINGLEPLAYER -> {
+                player1 = DevicePlayer("Player1", board)
 
-        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
-        val nbh = if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+                val board2 = Board()
+                val ships2 = generateShips()
+                board2.randomPlacement(ships2)
+                player2 = BotPlayer("Bot", board2)
+            }
 
-        val w = resources.displayMetrics.widthPixels / 28
-        val h = (resources.displayMetrics.heightPixels + nbh) / 14
-        val len = if (w < h) w else h
-
-        arrayOf(R.id.tvPlayer1, R.id.tvPlayer2).forEach { id ->
-            findViewById<TextView>(id).apply {
-                layoutParams.apply {
-                    width = 11 * len
-                    height = len
+            Gamemode.MULTIPLAYER_DEVICE -> {
+                if (player1 == null) {
+                    player1 = DevicePlayer("Player1", board)
+                    findViewById<Button>(R.id.btBattle).apply {
+                        text = "Next"
+                    }
+                }
+                else {
+                    player2 = DevicePlayer("Player2", board)
+                    findViewById<TextView>(R.id.tvPlayer1).apply {
+                        text = player2?.name ?: ""
+                    }
                 }
             }
         }
+    }
 
-        findViewById<LinearLayout>(R.id.layoutBoard).apply {
-            layoutParams.apply {
-                width = 11 * len
-                height = 11 * len
+    private fun nextPlayer() {
+        GameManager.setPlayers(player1, player2)
+
+        if (player1?.isReady() != true) {
+            return
+        }
+
+        val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
+        if (name.isNotEmpty()) {
+            player1?.name = name
+        }
+
+        startActivity(Intent(this, ShipsPlacementActivity::class.java))
+    }
+
+    private fun startGame() {
+        GameManager.setPlayers(player1, player2)
+
+        if (!GameManager.isReady()) return
+
+        val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
+        if (name.isNotEmpty()) {
+            if (gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 != null) {
+                player2?.name = name
+            }
+            else {
+                player1?.name = name
             }
         }
 
-        findViewById<LinearLayout>(R.id.layoutShips).apply {
-            layoutParams.apply {
-                width = 11 * len
-                height = 9 * len
-            }
-        }
+        startActivity(Intent(this, GameActivity::class.java))
+    }
 
-        findViewById<LinearLayout>(R.id.layoutMiddle).apply {
-            layoutParams.apply {
-                width = 2 * len
-                height = 12 * len
-            }
-        }
-
-        findViewById<ConstraintLayout>(R.id.layoutButtons).apply {
-            layoutParams.apply {
-                width = 11 * len
-                height = 2 * len
-            }
-        }
-
-        findViewById<Button>(R.id.btRandomPlacement).apply {
-            layoutParams.apply {
-                width = 2 * len
-                height = 2 * len
-            }
-        }
-
-        findViewById<Button>(R.id.btClear).apply {
-            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
-                width = 2 * len
-                height = 2 * len
-                leftMargin = len
-            }
-        }
-
-        findViewById<Button>(R.id.btBattle).apply {
-            layoutParams.apply {
-                width = 3 * len
-                height = 2 * len
-            }
-        }
-
-        findViewById<ImageButton>(R.id.btBack).apply {
-            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
-                width = 2 * len
-                height = 2 * len
-                topMargin = len
-            }
-        }
+    override fun finish() {
+        GameManager.reset()
+        super.finish()
     }
 
     private fun setButtonListeners(board: Board, ships: List<Ship>) {
@@ -135,12 +124,21 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btRandomPlacement).setOnClickListener {
-            randomPlacement(board, ships)
+            board.randomPlacement(ships)
         }
 
         findViewById<Button>(R.id.btClear).setOnClickListener {
             board.forEach { field -> field.ship = null }
             ships.forEach { ship -> ship.clear(); ship.show() }
+        }
+
+        findViewById<Button>(R.id.btBattle).setOnClickListener {
+            if (gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
+                nextPlayer()
+            }
+            else {
+                startGame()
+            }
         }
     }
 
@@ -280,42 +278,6 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
     }
 
-    private fun randomPlacement(board: Board, ships: List<Ship>) {
-        val list: MutableList<Pair<Int, Int>> = mutableListOf()
-        for (i in 0 until board.size) {
-            for (j in 0 until board.size) {
-                list.add(Pair(i, j))
-            }
-        }
-
-        ships.forEach { ship ->
-            ship.clear()
-            ship.hide()
-
-            while (true) {
-                val (row, col) = list.random()
-
-                val start = Field(row, col)
-
-                val end = if (Random.nextBoolean()) {
-                    Field(row, col + ship.size - 1)
-                }
-                else {
-                    Field(row + ship.size - 1, col)
-                }
-
-                if (board.set(start, end, ship)) {
-                    for (i in board.coerceIn(start.row - 1) .. board.coerceIn(end.row + 1)) {
-                        for (j in board.coerceIn(start.col - 1) .. board.coerceIn(end.col + 1)) {
-                            list.remove(Pair(i, j))
-                        }
-                    }
-                    break
-                }
-            }
-        }
-    }
-
     private fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
         if (draggingShip == null) return false
         val ship = draggingShip as Ship
@@ -422,8 +384,19 @@ class ShipsPlacementActivity : AppCompatActivity() {
         field.view?.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
 
+    private fun generateShips() : List<Ship> {
+        val maxShipSize = 4; val minShipSize = 1
+        val ships = ArrayList<Ship>()
+        for (shipSize in maxShipSize downTo minShipSize) {
+            for (n in 0 until 5 - shipSize) {
+                ships.add(Ship(shipSize))
+            }
+        }
+        return ships
+    }
+
     private fun generateShips(layout: LinearLayout) : List<Ship> {
-        val size = DIMENSION + 1
+        val size = Board.DIMENSION + 1
         var shipSize = 4
 
         val ships = mutableListOf<Ship>()
@@ -506,5 +479,76 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
         return shipView
+    }
+
+    private fun resize() {
+        val size = getUnitSize(resources)
+
+        arrayOf(R.id.tvPlayer1, R.id.tvPlayer2).forEach { id ->
+            findViewById<TextView>(id).apply {
+                layoutParams.apply {
+                    width = 11 * size
+                    height = size
+                }
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutBoard).apply {
+            layoutParams.apply {
+                width = 11 * size
+                height = 11 * size
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutShips).apply {
+            layoutParams.apply {
+                width = 11 * size
+                height = 9 * size
+            }
+        }
+
+        findViewById<LinearLayout>(R.id.layoutMiddle).apply {
+            layoutParams.apply {
+                width = 2 * size
+                height = 12 * size
+            }
+        }
+
+        findViewById<ConstraintLayout>(R.id.layoutButtons).apply {
+            layoutParams.apply {
+                width = 11 * size
+                height = 2 * size
+            }
+        }
+
+        findViewById<Button>(R.id.btRandomPlacement).apply {
+            layoutParams.apply {
+                width = 2 * size
+                height = 2 * size
+            }
+        }
+
+        findViewById<Button>(R.id.btClear).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * size
+                height = 2 * size
+                leftMargin = size
+            }
+        }
+
+        findViewById<Button>(R.id.btBattle).apply {
+            layoutParams.apply {
+                width = 3 * size
+                height = 2 * size
+            }
+        }
+
+        findViewById<ImageButton>(R.id.btBack).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * size
+                height = 2 * size
+                topMargin = size
+            }
+        }
     }
 }

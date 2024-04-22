@@ -5,16 +5,16 @@ import android.content.Context
 import android.graphics.*
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.MotionEvent
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.forEach
 import androidx.core.view.get
+import kotlin.random.Random
 
 class Board(
-    size: Int,
+    size: Int = DIMENSION,
     context: Context? = null,
-    private val layout: LinearLayout? = null,
+    val layout: LinearLayout? = null,
     private val rightSide: Boolean = false,
     var active: Boolean = false
 ) {
@@ -22,6 +22,7 @@ class Board(
     companion object {
         const val MIN_SIZE = 1
         const val MAX_SIZE = 20
+        const val DIMENSION = 10
     }
 
     val size: Int = size.coerceIn(MIN_SIZE, MAX_SIZE)
@@ -37,6 +38,10 @@ class Board(
 
     operator fun get(index: Int) : Array<Field> {
         return fields[index]
+    }
+
+    operator fun get(field: Field) : Field {
+        return this[field.row][field.col]
     }
 
     @SuppressLint("SetTextI18n")
@@ -114,8 +119,6 @@ class Board(
                 view?.text = this@Board[i][j].state.toString()
             }
         }
-
-        setListeners(layout)
     }
 
     fun isAvailable(top: Int, bottom: Int, left: Int, right: Int) : Boolean {
@@ -217,67 +220,38 @@ class Board(
         return true
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setListeners(layout: LinearLayout) {
-        layout.setOnTouchListener { _, event ->
-            if (!active) return@setOnTouchListener false
+    fun randomPlacement(ships: List<Ship>) {
+        val list: MutableList<Pair<Int, Int>> = mutableListOf()
+        for (i in 0 until size) {
+            for (j in 0 until size) {
+                list.add(Pair(i, j))
+            }
+        }
 
-            when (event.action) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    forEach { field, tv ->
-                        val location = IntArray(2)
-                        tv.getLocationOnScreen(location)
-                        val (x, y) = location
+        ships.forEach { ship ->
+            ship.clear()
+            ship.hide()
 
-                        if (!isInside(event.rawX, event.rawY)) {
-                            field.background?.color = Color.TRANSPARENT
-                        }
-                        else if (event.rawX >= x && event.rawX <= x + tv.width &&
-                            event.rawY >= y && event.rawY <= y + tv.height) {
+            while (true) {
+                val (row, col) = list.random()
 
-                            field.background?.color = Color.DKGRAY
-                        }
-                        else if ((event.rawX >= x && event.rawX <= x + tv.width) ||
-                            (event.rawY >= y && event.rawY <= y + tv.height)) {
+                val start = Field(row, col)
 
-                            field.background?.color = Color.LTGRAY
-                        }
-                        else {
-                            field.background?.color = Color.TRANSPARENT
+                val end = if (Random.nextBoolean()) {
+                    Field(row, col + ship.size - 1)
+                }
+                else {
+                    Field(row + ship.size - 1, col)
+                }
+
+                if (set(start, end, ship)) {
+                    for (i in coerceIn(start.row - 1) .. coerceIn(end.row + 1)) {
+                        for (j in coerceIn(start.col - 1) .. coerceIn(end.col + 1)) {
+                            list.remove(Pair(i, j))
                         }
                     }
-                    true
+                    break
                 }
-                MotionEvent.ACTION_UP -> {
-                    forEach { field, tv ->
-                        field.background?.color = Color.TRANSPARENT
-
-                        val location = IntArray(2)
-                        tv.getLocationOnScreen(location)
-                        val (x, y) = location
-
-                        if (event.rawX >= x && event.rawX <= x + tv.width &&
-                            event.rawY >= y && event.rawY <= y + tv.height) {
-
-                            when (field.state) {
-                                Field.State.UNKNOWN -> {
-                                    field.state = Field.State.EMPTY
-                                }
-                                Field.State.EMPTY -> {
-                                    field.state = Field.State.SHIP
-                                }
-                                Field.State.SHIP -> {
-                                    field.state = Field.State.DESTROYED_SHIP
-                                }
-                                Field.State.DESTROYED_SHIP -> {
-                                    field.state = Field.State.UNKNOWN
-                                }
-                            }
-                        }
-                    }
-                    true
-                }
-                else -> false
             }
         }
     }

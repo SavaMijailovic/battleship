@@ -14,7 +14,7 @@
             android:background="@color/button"
             android:foreground="?android:attr/selectableItemBackground"
             android:src="?attr/homeAsUpIndicator"
-            android:contentDescription="&lt;"
+            android:contentDescription="@string/left_arrow"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/layoutContainer"
             android:layout_marginTop="25dp"/>
@@ -41,9 +41,10 @@
                     android:layout_width="275dp"
                     android:layout_height="25dp"
                     android:textColor="@color/text"
+                    android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="20"
+                    android:maxLength="15"
                     android:text="Player1"
                     android:focusableInTouchMode="true"
                     android:cursorVisible="false"
@@ -86,9 +87,10 @@
                     android:layout_width="275dp"
                     android:layout_height="25dp"
                     android:textColor="@color/text"
+                    android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="20"
+                    android:maxLength="15"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"/>
 
@@ -113,7 +115,7 @@
                         android:id="@+id/btRandomPlacement"
                         android:layout_width="50dp"
                         android:layout_height="0dp"
-                        android:text="&lt;"
+                        android:text="@string/left_arrow"
                         android:textAllCaps="false"
                         android:textSize="25sp"
                         android:background="@color/button"
@@ -126,7 +128,7 @@
                         android:id="@+id/btClear"
                         android:layout_width="50dp"
                         android:layout_height="0dp"
-                        android:text="&gt;"
+                        android:text="@string/right_arrow"
                         android:textAllCaps="false"
                         android:textSize="25sp"
                         android:background="@color/button"
@@ -148,6 +150,7 @@
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
                         app:layout_constraintBottom_toBottomOf="parent"/>
+
             </androidx.constraintlayout.widget.ConstraintLayout>
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

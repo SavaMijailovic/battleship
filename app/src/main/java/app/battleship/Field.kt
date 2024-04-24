@@ -8,8 +8,8 @@ class Field(
     var row: Int,
     var col: Int,
     state: State = State.UNKNOWN,
+    ship: Ship? = null,
     var view: TextView? = null,
-    ship: Ship? = null
 ) : Comparable<Field> {
 
     var state: State = state

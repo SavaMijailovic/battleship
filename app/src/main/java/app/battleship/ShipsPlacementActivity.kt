@@ -56,11 +56,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
         when (gamemode) {
             Gamemode.SINGLEPLAYER -> {
                 player1 = DevicePlayer("Player1", board)
-
-                val board2 = Board()
-                val ships2 = generateShips()
-                board2.randomPlacement(ships2)
-                player2 = BotPlayer("Bot", board2)
+                player2 = BotPlayer("Bot")
             }
 
             Gamemode.MULTIPLAYER_DEVICE -> {
@@ -81,17 +77,14 @@ class ShipsPlacementActivity : AppCompatActivity() {
     }
 
     private fun nextPlayer() {
-        GameManager.setPlayers(player1, player2)
-
-        if (player1?.isReady() != true) {
-            return
-        }
+        if (player1?.isReady() != true) return
 
         val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
         if (name.isNotEmpty()) {
             player1?.name = name
         }
 
+        GameManager.setPlayers(player1, player2)
         startActivity(Intent(this, ShipsPlacementActivity::class.java))
     }
 
@@ -102,15 +95,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
         if (name.isNotEmpty()) {
-            if (gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 != null) {
-                player2?.name = name
-            }
-            else {
+            if (gamemode == Gamemode.SINGLEPLAYER) {
                 player1?.name = name
+            }
+            else if (gamemode == Gamemode.MULTIPLAYER_DEVICE) {
+                player2?.name = name
             }
         }
 
-        startActivity(Intent(this, GameActivity::class.java))
+        startActivity(Intent(this, GameActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
     }
 
     override fun finish() {
@@ -384,17 +379,6 @@ class ShipsPlacementActivity : AppCompatActivity() {
         field.view?.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
 
-    private fun generateShips() : List<Ship> {
-        val maxShipSize = 4; val minShipSize = 1
-        val ships = ArrayList<Ship>()
-        for (shipSize in maxShipSize downTo minShipSize) {
-            for (n in 0 until 5 - shipSize) {
-                ships.add(Ship(shipSize))
-            }
-        }
-        return ships
-    }
-
     private fun generateShips(layout: LinearLayout) : List<Ship> {
         val size = Board.DIMENSION + 1
         var shipSize = 4
@@ -489,6 +473,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
                 layoutParams.apply {
                     width = 11 * size
                     height = size
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.6f)
                 }
             }
         }

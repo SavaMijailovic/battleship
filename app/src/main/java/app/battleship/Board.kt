@@ -9,6 +9,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.forEach
 import androidx.core.view.get
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 class Board(
@@ -16,7 +19,8 @@ class Board(
     context: Context? = null,
     val layout: LinearLayout? = null,
     private val rightSide: Boolean = false,
-    var active: Boolean = false
+    var active: Boolean = false,
+    random: Boolean = false,
 ) {
 
     companion object {
@@ -33,6 +37,9 @@ class Board(
     init {
         if (context != null && layout != null) {
             generateBoard(context, layout, rightSide)
+        }
+        if (random) {
+            randomPlacement()
         }
     }
 
@@ -191,6 +198,43 @@ class Board(
         }
     }
 
+    fun update(target: Field) {
+        val field = this[target]
+
+        CoroutineScope(Dispatchers.Main).launch {
+            field.state = when (target.state) {
+                Field.State.UNKNOWN -> Field.State.EMPTY
+                Field.State.SHIP -> Field.State.DESTROYED_SHIP
+                else -> field.state
+            }
+
+            if (target.state == Field.State.SHIP) {
+                updateIfDestroyed(target.ship)
+            }
+        }
+    }
+
+    private fun updateIfDestroyed(ship: Ship?) {
+        if (ship == null || ship.health != 0) {
+            return
+        }
+
+        val (top, bottom) = Pair(ship.fields.first().row - 1, ship.fields.last().row + 1)
+        val (left, right) = Pair(ship.fields.first().col - 1, ship.fields.last().col + 1)
+
+        for (row in coerceIn(top)  .. coerceIn(bottom)) {
+            for (col in coerceIn(left) .. coerceIn(right)) {
+                val field = this[row][col]
+                if (field.state == Field.State.UNKNOWN) {
+                    field.state = Field.State.EMPTY
+                }
+                else if (field.state == Field.State.DESTROYED_SHIP) {
+                    field.state = Field.State.SHIP
+                }
+            }
+        }
+    }
+
     fun set(start: Field, end: Field, ship: Ship,
             action: (Field, Ship) -> Unit = { f, s -> s.add(f) }) : Boolean {
 
@@ -219,6 +263,19 @@ class Board(
         }
         return true
     }
+
+    private fun generateShips() : List<Ship> {
+        val maxShipSize = 4; val minShipSize = 1
+        val ships = mutableListOf<Ship>()
+        for (shipSize in maxShipSize downTo minShipSize) {
+            for (n in 0 until 5 - shipSize) {
+                ships.add(Ship(shipSize))
+            }
+        }
+        return ships
+    }
+
+    private fun randomPlacement() = randomPlacement(generateShips())
 
     fun randomPlacement(ships: List<Ship>) {
         val list: MutableList<Pair<Int, Int>> = mutableListOf()

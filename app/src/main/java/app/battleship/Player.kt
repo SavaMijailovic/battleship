@@ -8,15 +8,18 @@ abstract class Player(var name: String) {
 
     lateinit var opponent: Player
     lateinit var opponentBoard: Board
+
     var health: Int = START_HEALTH
+        set(value) { field = value.coerceIn(0, START_HEALTH) }
 
     abstract fun nextTarget() : Field
-    abstract fun fire(target: Field) : Pair<Field.State, Ship?>
+    abstract fun fire(target: Field) : Field
     abstract fun isReady() : Boolean
 
     fun play() : Boolean {
-        // TODO
-        return false
+        val result = opponent.fire(nextTarget())
+        opponentBoard.update(result)
+        return result.state == Field.State.SHIP
     }
 
     override fun toString() : String = name

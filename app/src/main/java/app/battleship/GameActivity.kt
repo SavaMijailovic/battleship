@@ -5,7 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Looper
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 
 class GameActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
@@ -21,52 +22,98 @@ class GameActivity : AppCompatActivity() {
 
         resize()
 
-        setPlayersNames()
         setPlayers()
+        setPlayersNames()
         setButtonListeners()
 
-        setBoardListeners(player1 as DevicePlayer)
-        
-        if (gamemode == Gamemode.MULTIPLAYER_DEVICE) {
+        if (player1::class == DevicePlayer::class) {
+            setBoardListeners(player1 as DevicePlayer)
+        }
+        if (player2::class == DevicePlayer::class) {
             setBoardListeners(player2 as DevicePlayer)
         }
 
-        // Thread(::game).start()
+        game.start()
     }
 
-    private val gamemode: Gamemode = GameManager.gamemode
+    override fun onDestroy() {
+        super.onDestroy()
+        game.interrupt()
+        GameManager.reset()
+    }
+
+    override fun finish() {
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
+        super.finish()
+    }
+
     private val player1: Player = GameManager.player1 as Player
     private val player2: Player = GameManager.player2 as Player
 
-    private fun game() {
+    private val tvActivePlayer: TextView by lazy { findViewById(R.id.tvActivePLayer) }
+    private val tvPlayer1: TextView by lazy { findViewById(R.id.tvPlayer1) }
+    private val tvPlayer2: TextView by lazy { findViewById(R.id.tvPlayer2) }
+    private val tvScore: TextView by lazy { findViewById(R.id.tvScore) }
+
+    private val game = Thread {
         var activePlayer = player1
         var otherPlayer = player2
 
-        while (true) {
-            if (activePlayer.play()) {
-                if (otherPlayer.health == 0) break
-            }
-            else {
-                activePlayer = otherPlayer.also { otherPlayer = activePlayer }
-            }
-        }
+        updateActivePlayer(activePlayer)
+        updateScore()
 
-        processWinner(activePlayer)
+        try {
+            while (true) {
+                val hit = activePlayer.play()
+                if (hit) {
+                    updateScore()
+                    if (otherPlayer.health == 0) break
+                }
+                else {
+                    activePlayer = otherPlayer.also { otherPlayer = activePlayer }
+                    updateActivePlayer(activePlayer)
+                }
+            }
+            processWinner(activePlayer)
+        }
+        catch (_: InterruptedException) {}
     }
 
     private fun processWinner(player: Player) {
-        Looper.prepare()
-        Toast.makeText(this, "Winner is $player", Toast.LENGTH_LONG).show()
-        // TODO
+        runOnUiThread {
+            if (player1 == player) {
+                tvPlayer1.setTextColor(getColor(R.color.win))
+                tvPlayer2.setTextColor(getColor(R.color.lose))
+                tvPlayer1.append("\uD83D\uDC51")
+            }
+            else {
+                tvPlayer1.setTextColor(getColor(R.color.lose))
+                tvPlayer2.setTextColor(getColor(R.color.win))
+                tvPlayer2.append("\uD83D\uDC51")
+            }
+
+            Toast.makeText(this, "Winner is $player", Toast.LENGTH_LONG).show()
+        }
     }
 
-    private fun setPlayersNames() {
-        findViewById<TextView>(R.id.tvPlayer1).apply {
-            text = player1.name
+    @SuppressLint("SetTextI18n")
+    private fun updateActivePlayer(player: Player) {
+        runOnUiThread {
+            if (player == player1) {
+                tvActivePlayer.text = getString(R.string.right_arrow)
+            }
+            else {
+                tvActivePlayer.text = getString(R.string.left_arrow)
+            }
         }
-        
-        findViewById<TextView>(R.id.tvPlayer2).apply {
-            text = player2.name
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun updateScore() {
+        runOnUiThread {
+            tvScore.text = "${Player.START_HEALTH - player2.health} : ${Player.START_HEALTH - player1.health}"
         }
     }
 
@@ -80,12 +127,10 @@ class GameActivity : AppCompatActivity() {
         player2.opponent = player1
     }
 
-    override fun finish() {
-        GameManager.reset()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        startActivity(intent)
+    @SuppressLint("SetTextI18n")
+    private fun setPlayersNames() {
+        tvPlayer1.text = "$player1"
+        tvPlayer2.text = "$player2"
     }
 
     private fun setButtonListeners() {
@@ -142,12 +187,7 @@ class GameActivity : AppCompatActivity() {
                         if (event.rawX >= x && event.rawX <= x + tv.width &&
                             event.rawY >= y && event.rawY <= y + tv.height) {
 
-                            field.state = when (field.state) {
-                                Field.State.UNKNOWN -> Field.State.EMPTY
-                                Field.State.EMPTY -> Field.State.SHIP
-                                Field.State.SHIP -> Field.State.DESTROYED_SHIP
-                                Field.State.DESTROYED_SHIP -> Field.State.UNKNOWN
-                            }
+                            player.target = field
                         }
                     }
                     true
@@ -175,6 +215,7 @@ class GameActivity : AppCompatActivity() {
                 layoutParams.apply {
                     width = 11 * size
                     height = size
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.6f)
                 }
             }
         }
@@ -191,6 +232,21 @@ class GameActivity : AppCompatActivity() {
                 width = 2 * size
                 height = 2 * size
                 topMargin = size
+            }
+        }
+
+        findViewById<TextView>(R.id.tvScore).apply {
+            layoutParams.apply {
+                width = 2 * size
+                height = size
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.5f)
+            }
+        }
+
+        findViewById<TextView>(R.id.tvActivePLayer).apply {
+            layoutParams.apply {
+                width = 2 * size
+                height = 2 * size
             }
         }
     }

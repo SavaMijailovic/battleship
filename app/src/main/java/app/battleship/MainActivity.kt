@@ -6,6 +6,7 @@ import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -19,6 +20,13 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btMultiplayerDevice).setOnClickListener {
             GameManager.gamemode = Gamemode.MULTIPLAYER_DEVICE
             startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btTwoBots).setOnClickListener {
+            GameManager.gamemode = Gamemode.SINGLEPLAYER
+            GameManager.player1 = BotPlayer("Bot1", delayTime = 200)
+            GameManager.player2 = BotPlayer("Bot2", delayTime = 200)
+            startActivity(Intent(this, GameActivity::class.java))
         }
     }
 }

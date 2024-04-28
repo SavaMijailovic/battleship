@@ -2,11 +2,9 @@ package app.battleship
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.TypedValue
-import android.view.MotionEvent
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -25,13 +23,6 @@ class GameActivity : AppCompatActivity() {
         setPlayers()
         setPlayersNames()
         setButtonListeners()
-
-        if (player1::class == DevicePlayer::class) {
-            setBoardListeners(player1 as DevicePlayer)
-        }
-        if (player2::class == DevicePlayer::class) {
-            setBoardListeners(player2 as DevicePlayer)
-        }
 
         game.start()
     }
@@ -66,7 +57,7 @@ class GameActivity : AppCompatActivity() {
 
         try {
             while (true) {
-                val hit = activePlayer.play()
+                val hit = activePlayer.play() ?: continue
                 if (hit) {
                     updateScore()
                     if (otherPlayer.health == 0) break
@@ -83,7 +74,7 @@ class GameActivity : AppCompatActivity() {
 
     private fun processWinner(player: Player) {
         runOnUiThread {
-            if (player1 == player) {
+            if (player == player1) {
                 tvPlayer1.setTextColor(getColor(R.color.win))
                 tvPlayer2.setTextColor(getColor(R.color.lose))
                 tvPlayer1.append("\uD83D\uDC51")
@@ -136,65 +127,6 @@ class GameActivity : AppCompatActivity() {
     private fun setButtonListeners() {
         findViewById<ImageButton>(R.id.btBack).setOnClickListener {
             finish()
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setBoardListeners(player: DevicePlayer) {
-        val board = player.opponentBoard
-
-        board.layout?.setOnTouchListener { _, event ->
-            if (!board.active) {
-                return@setOnTouchListener false
-            }
-
-            when (event.action) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    board.forEach { field, tv ->
-
-                        val location = IntArray(2)
-                        tv.getLocationOnScreen(location)
-                        val (x, y) = location
-
-                        if (!board.isInside(event.rawX, event.rawY)) {
-                            field.background?.color = Color.TRANSPARENT
-                        }
-                        else if (event.rawX >= x && event.rawX <= x + tv.width &&
-                            event.rawY >= y && event.rawY <= y + tv.height) {
-
-                            field.background?.color = Color.DKGRAY
-                        }
-                        else if ((event.rawX >= x && event.rawX <= x + tv.width) ||
-                            (event.rawY >= y && event.rawY <= y + tv.height)) {
-
-                            field.background?.color = Color.LTGRAY
-                        }
-                        else {
-                            field.background?.color = Color.TRANSPARENT
-                        }
-                    }
-                    true
-                }
-
-                MotionEvent.ACTION_UP -> {
-                    board.forEach { field, tv ->
-                        field.background?.color = Color.TRANSPARENT
-
-                        val location = IntArray(2)
-                        tv.getLocationOnScreen(location)
-                        val (x, y) = location
-
-                        if (event.rawX >= x && event.rawX <= x + tv.width &&
-                            event.rawY >= y && event.rawY <= y + tv.height) {
-
-                            player.target = field
-                        }
-                    }
-                    true
-                }
-
-                else -> false
-            }
         }
     }
 

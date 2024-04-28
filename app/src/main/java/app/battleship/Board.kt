@@ -123,7 +123,6 @@ class Board(
             field.apply {
                 view = tvBoard[i][j]
                 background = tvBoard[i][j]?.background as BorderDrawable
-                view?.text = this@Board[i][j].state.toString()
             }
         }
     }
@@ -198,33 +197,36 @@ class Board(
         }
     }
 
-    fun update(target: Field) {
+    fun update(target: Field, hit: Boolean, destroyed: Boolean) {
+        if (!isInside(target)) return
         val field = this[target]
 
         CoroutineScope(Dispatchers.Main).launch {
-            field.state = when (target.state) {
-                Field.State.UNKNOWN -> Field.State.EMPTY
-                Field.State.SHIP -> Field.State.DESTROYED_SHIP
-                else -> field.state
-            }
-
-            if (target.state == Field.State.SHIP) {
-                updateIfDestroyed(target.ship)
+            field.state = if (hit) Field.State.DESTROYED_SHIP else Field.State.EMPTY
+            if (hit && destroyed) {
+                updateDestroyed(target)
             }
         }
     }
 
-    private fun updateIfDestroyed(ship: Ship?) {
-        if (ship == null || ship.health != 0) {
-            return
-        }
+    private fun updateDestroyed(target: Field) {
+        val (row, col) = target
 
-        val (top, bottom) = Pair(ship.fields.first().row - 1, ship.fields.last().row + 1)
-        val (left, right) = Pair(ship.fields.first().col - 1, ship.fields.last().col + 1)
+        var top = row - 1
+        while (isInside(top) && this[top][col].state == Field.State.DESTROYED_SHIP) --top
 
-        for (row in coerceIn(top)  .. coerceIn(bottom)) {
-            for (col in coerceIn(left) .. coerceIn(right)) {
-                val field = this[row][col]
+        var bottom = row + 1
+        while (isInside(bottom) && this[bottom][col].state == Field.State.DESTROYED_SHIP) ++bottom
+
+        var left = col - 1
+        while (isInside(left) && this[row][left].state == Field.State.DESTROYED_SHIP) --left
+
+        var right = col + 1
+        while (isInside(right) && this[row][right].state == Field.State.DESTROYED_SHIP) ++right
+
+        for (i in coerceIn(top)  .. coerceIn(bottom)) {
+            for (j in coerceIn(left) .. coerceIn(right)) {
+                val field = this[i][j]
                 if (field.state == Field.State.UNKNOWN) {
                     field.state = Field.State.EMPTY
                 }

@@ -15,7 +15,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintVertical_bias="0.5">
+            app:layout_constraintVertical_bias="0.5" android:id="@+id/constraintLayout">
 
         <Button
                 android:id="@+id/btSingleplayer"
@@ -53,4 +53,12 @@
                 android:layout_marginStart="20dp"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+    <TextView
+            android:text="Battleship"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:id="@+id/textView"
+            app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
+            android:layout_marginBottom="72dp" app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:textSize="40sp" android:textColor="@color/black" app:layout_constraintHorizontal_bias="0.501"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

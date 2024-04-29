@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Battleship</string>
+    <string name="left_arrow">⬅\uFE0F</string>
+    <string name="right_arrow">➡\uFE0F</string>
 </resources>

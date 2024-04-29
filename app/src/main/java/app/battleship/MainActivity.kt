@@ -1,26 +1,32 @@
 package app.battleship
 
+import android.content.Intent
 import android.os.Bundle
-import android.view.Window
-import androidx.activity.ComponentActivity
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        setBarsBehavior(window)
-    }
+        hideSystemUI(window)
 
-    private fun setBarsBehavior(window: Window) {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window,
-            window.decorView.findViewById(android.R.id.content)).let { controller ->
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        findViewById<Button>(R.id.btSingleplayer).setOnClickListener {
+            GameManager.gamemode = Gamemode.SINGLEPLAYER
+            startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btMultiplayerDevice).setOnClickListener {
+            GameManager.gamemode = Gamemode.MULTIPLAYER_DEVICE
+            startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btTwoBots).setOnClickListener {
+            GameManager.gamemode = Gamemode.SINGLEPLAYER
+            GameManager.player1 = BotPlayer("Bot1", delayTime = 200)
+            GameManager.player2 = BotPlayer("Bot2", delayTime = 200)
+            startActivity(Intent(this, GameActivity::class.java))
         }
     }
 }
-

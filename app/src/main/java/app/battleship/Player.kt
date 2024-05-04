@@ -7,7 +7,7 @@ abstract class Player(var name: String) {
     }
 
     lateinit var opponent: Player
-    lateinit var opponentBoard: Board
+    open lateinit var opponentBoard: Board
 
     var health: Int = START_HEALTH
         set(value) { field = value.coerceIn(0, START_HEALTH) }

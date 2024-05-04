@@ -24,8 +24,8 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btTwoBots).setOnClickListener {
             GameManager.gamemode = Gamemode.SINGLEPLAYER
-            GameManager.player1 = BotPlayer("Bot1", delayTime = 200)
-            GameManager.player2 = BotPlayer("Bot2", delayTime = 200)
+            GameManager.player1 = BotPlayer("Bot1")
+            GameManager.player2 = BotPlayer("Bot2")
             startActivity(Intent(this, GameActivity::class.java))
         }
     }

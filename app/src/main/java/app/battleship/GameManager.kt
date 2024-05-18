@@ -14,8 +14,17 @@ object GameManager {
         return player1?.isReady() == true && player2?.isReady() == true
     }
 
-    fun reset() {
+    fun reset(resetFirstPlayer: Boolean = false) {
         player1 = null
         player2 = null
+        if (resetFirstPlayer) {
+            firstToPlay = true
+        }
+    }
+
+    var firstToPlay: Boolean = true
+
+    fun changeFirstToPlay() {
+        firstToPlay = !firstToPlay
     }
 }

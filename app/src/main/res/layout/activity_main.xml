@@ -7,58 +7,73 @@
         android:layout_height="match_parent"
         tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <TextView
+            android:id="@+id/textView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:textSize="30sp"
+            android:textColor="@color/black"
+            android:text="@string/app_name"
+            app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
+            android:layout_marginBottom="20dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/constraintLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintVertical_bias="0.5" android:id="@+id/constraintLayout">
+            app:layout_constraintEnd_toEndOf="parent">
 
         <Button
                 android:id="@+id/btSingleplayer"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Singleplayer"
                 android:textAllCaps="false"
                 android:textSize="20sp"
+                app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
+                app:layout_constraintEnd_toEndOf="parent"/>
 
         <Button
                 android:id="@+id/btMultiplayerDevice"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Multiplayer on device"
                 android:textAllCaps="false"
                 android:textSize="20sp"
-                app:layout_constraintStart_toEndOf="@+id/btSingleplayer"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_marginStart="20dp"/>
+                app:layout_constraintTop_toBottomOf="@+id/btSingleplayer"
+                android:layout_marginTop="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
         <Button
                 android:id="@+id/btTwoBots"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Bot vs Bot"
                 android:textAllCaps="false"
                 android:textSize="20sp"
-                app:layout_constraintStart_toEndOf="@+id/btMultiplayerDevice"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_marginStart="20dp"/>
+                app:layout_constraintTop_toBottomOf="@+id/btMultiplayerBluetooth"
+                android:layout_marginTop="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+        <Button
+                android:id="@+id/btMultiplayerBluetooth"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Multiplayer via Bluetooth"
+                android:textAllCaps="false"
+                android:textSize="20sp"
+                app:layout_constraintTop_toBottomOf="@+id/btMultiplayerDevice"
+                android:layout_marginTop="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-    <TextView
-            android:text="Battleship"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:id="@+id/textView"
-            app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
-            android:layout_marginBottom="72dp" app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:textSize="40sp" android:textColor="@color/black" app:layout_constraintHorizontal_bias="0.501"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

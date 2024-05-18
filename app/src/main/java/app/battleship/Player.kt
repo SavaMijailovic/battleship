@@ -20,8 +20,12 @@ abstract class Player(var name: String) {
         val target = nextTarget()
         if (!isValid(target)) return null
         val (hit, destroyed) = opponent.fire(target)
-        opponentBoard.update(target, hit, destroyed)
+        processResult(target, hit, destroyed)
         return hit
+    }
+
+    protected open fun processResult(target: Field, hit: Boolean, destroyed: Boolean) {
+        opponentBoard.update(target, hit, destroyed)
     }
 
     protected fun isValid(target: Field) : Boolean {

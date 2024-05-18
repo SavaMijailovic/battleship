@@ -44,7 +44,7 @@
                     android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="15"
+                    android:maxLength="20"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"/>
 
@@ -115,7 +115,7 @@
                     android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="15"
+                    android:maxLength="20"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"/>
 

@@ -44,7 +44,7 @@
                     android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="15"
+                    android:maxLength="20"
                     android:text="Player1"
                     android:focusableInTouchMode="true"
                     android:cursorVisible="false"
@@ -89,8 +89,8 @@
                     android:textColor="@color/text"
                     android:textStyle="bold"
                     android:gravity="center"
-                    android:textSize="18sp"
-                    android:maxLength="15"
+                    android:textSize="16sp"
+                    android:maxLength="30"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"/>
 

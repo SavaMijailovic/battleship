@@ -35,29 +35,31 @@ class Field(
         this.ship = ship
     }
 
-    operator fun component1(): Int = row
-    operator fun component2(): Int = col
+    constructor() : this(0, 0)
 
-    override fun compareTo(other: Field): Int {
+    operator fun component1() : Int = row
+    operator fun component2() : Int = col
+
+    override fun compareTo(other: Field) : Int {
         return if (col == other.col) row.compareTo(other.row) else col.compareTo(other.col)
     }
 
-    override fun equals(other: Any?): Boolean {
+    override fun equals(other: Any?) : Boolean {
         if (this === other) return true
         if (other !is Field) return false
         return this.compareTo(other) == 0
     }
 
-    override fun hashCode(): Int {
+    override fun hashCode() : Int {
         return Objects.hash(row, col)
     }
 
-    fun distanceTo(other: Field): Int {
+    fun distanceTo(other: Field) : Int {
         return abs(row - other.row) + abs(col - other.col)
     }
 
-    override fun toString(): String {
-        return "($row, $col)"
+    override fun toString() : String {
+        return "$row $col"
     }
 
     fun isShip() : Boolean {

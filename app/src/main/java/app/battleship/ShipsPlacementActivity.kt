@@ -1,6 +1,7 @@
 package app.battleship
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Point
@@ -11,13 +12,12 @@ import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
+import java.util.concurrent.atomic.AtomicBoolean
 
+@SuppressLint("MissingPermission")
 class ShipsPlacementActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +41,15 @@ class ShipsPlacementActivity : AppCompatActivity() {
         setTextViewListeners()
     }
 
-    private val gamemode = GameManager.gamemode
+    override fun finish() {
+        leaving = true
+        BluetoothManager.connection?.close()
+        super.finish()
+    }
+
+    private var leaving = false
+    private val ready = AtomicBoolean(false)
+
     private var player1: Player? = GameManager.player1
     private var player2: Player? = GameManager.player2
 
@@ -52,8 +60,9 @@ class ShipsPlacementActivity : AppCompatActivity() {
     private var draggingShip: Ship? = null
     private var offset = 0
 
+    @SuppressLint("SetTextI18n")
     private fun setPlayers(board: Board) {
-        when (gamemode) {
+        when (GameManager.gamemode) {
             Gamemode.SINGLEPLAYER -> {
                 player1 = DevicePlayer("Player1", board)
                 player2 = BotPlayer("Bot")
@@ -73,6 +82,97 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            Gamemode.MULTIPLAYER_BLUETOOTH -> {
+                if (BluetoothManager.connection == null) {
+                    finish()
+                    return
+                }
+
+                val connection = BluetoothManager.connection!!
+
+                player1 = DevicePlayer(BluetoothManager.adapter.name ?: "Player1", board)
+                findViewById<TextView>(R.id.tvPlayer1).text = player1?.name
+
+                val btPlayer = BluetoothPlayer(connection.socket.remoteDevice.name ?: "Other player", connection)
+                player2 = btPlayer
+
+                Thread {
+                    val tvPlayer2: TextView = findViewById(R.id.tvPlayer2)
+
+                    runOnUiThread {
+                        tvPlayer2.setTextColor(getColor(R.color.red))
+                        tvPlayer2.text = "Other player is not ready"
+                    }
+
+                    try {
+                        while (true) {
+                            btPlayer.ready = connection.read().toBooleanStrictOrNull() ?: continue
+
+                            if (btPlayer.ready) {
+                                if (ready.get()) {
+                                    connection.write(true)
+                                    runOnUiThread {
+                                        startGame()
+                                    }
+                                    break
+                                }
+                                else {
+                                    runOnUiThread {
+                                        tvPlayer2.setTextColor(getColor(R.color.green))
+                                        tvPlayer2.text = "Other player is ready"
+                                    }
+                                }
+                            }
+                            else {
+                                runOnUiThread {
+                                    tvPlayer2.setTextColor(getColor(R.color.red))
+                                    tvPlayer2.text = "Other player is not ready"
+                                }
+                            }
+                        }
+                    }
+                    catch (_: Exception) {
+                        if (!leaving) {
+                            runOnUiThread {
+                                tvPlayer2.setTextColor(getColor(R.color.text))
+                                tvPlayer2.text = "Connection lost"
+
+                                AlertDialog.Builder(this)
+                                    .setTitle("Connection lost")
+                                    .setNegativeButton("Cancel") { _, _ -> }
+                                    .create()
+                                    .show()
+                            }
+                        }
+                        connection.close()
+                    }
+                }.start()
+            }
+        }
+    }
+
+    private fun checkIfReady() {
+        ready.set(player1?.isReady() == true)
+        if (!ready.get()) return
+
+        val connection = BluetoothManager.connection!!
+        if (!connection.isConnected()) throw RuntimeException()
+
+        connection.write(true)
+
+        if (player2?.isReady() != true) {
+            AlertDialog.Builder(this)
+                .setTitle("Waiting for ${connection.socket.remoteDevice.name ?: "other player"}...")
+                .setNegativeButton("Cancel") { _, _ ->
+                    ready.set(false)
+                    connection.write(false)
+                }
+                .create()
+                .apply {
+                    setCanceledOnTouchOutside(false)
+                }
+                .show()
         }
     }
 
@@ -86,6 +186,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         GameManager.setPlayers(player1, player2)
         startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        super.finish()
     }
 
     private fun startGame() {
@@ -95,21 +196,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
         if (name.isNotEmpty()) {
-            if (gamemode == Gamemode.SINGLEPLAYER) {
-                player1?.name = name
-            }
-            else if (gamemode == Gamemode.MULTIPLAYER_DEVICE) {
-                player2?.name = name
+            when (GameManager.gamemode) {
+                Gamemode.SINGLEPLAYER, Gamemode.MULTIPLAYER_BLUETOOTH -> {
+                    player1?.name = name
+                }
+                Gamemode.MULTIPLAYER_DEVICE -> {
+                    player2?.name = name
+                }
             }
         }
 
-        startActivity(Intent(this, GameActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
-    }
-
-    override fun finish() {
-        GameManager.reset()
+        startActivity(Intent(this, GameActivity::class.java))
         super.finish()
     }
 
@@ -128,8 +225,21 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btBattle).setOnClickListener {
-            if (gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
+            if (GameManager.gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
                 nextPlayer()
+            }
+            else if (GameManager.gamemode == Gamemode.MULTIPLAYER_BLUETOOTH) {
+                try {
+                    checkIfReady()
+                }
+                catch (_: Exception) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Connection lost")
+                        .setNegativeButton("Cancel") { _, _ -> }
+                        .create()
+                        .show()
+                    BluetoothManager.connection?.close()
+                }
             }
             else {
                 startGame()

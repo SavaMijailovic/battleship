@@ -1,47 +1,120 @@
 package app.battleship
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
+import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import java.util.concurrent.atomic.AtomicBoolean
 
-class GameActivity : AppCompatActivity() {
+class GameActivity : BaseActivity(R.layout.activity_game) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_game)
-        hideSystemUI(window)
-
-        resize()
 
         setPlayers()
         setPlayersNames()
         setButtonListeners()
+        Invitation.reset()
 
         game.start()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         game.interrupt()
-        GameManager.reset()
+        super.onDestroy()
     }
 
     override fun finish() {
-        startActivity(Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
+        if (game.isAlive) {
+            AlertDialog.Builder(this)
+                .setTitle("Do you want to leave the game?")
+                .setPositiveButton("Stay") { _, _ -> }
+                .setNegativeButton("Leave") { _, _ ->
+                    leave()
+                }
+                .create()
+                .show()
+        }
+        else {
+            AlertDialog.Builder(this)
+                .setTitle("Do you want to play again?")
+                .setNeutralButton("Cancel") { _, _ -> }
+                .setPositiveButton("Rematch") { _, _ ->
+                    playAgain()
+                }
+                .setNegativeButton("Leave") { _, _ ->
+                    leave()
+                }
+                .create()
+                .show()
+        }
+    }
+
+    private var leaving = false
+    private val otherPlayerLeft = AtomicBoolean(false)
+
+    private fun leave() {
+        leaving = true
+        if (GameManager.gamemode == Gamemode.MULTIPLAYER_BLUETOOTH) {
+            BluetoothManager.connection?.write(BluetoothPlayer.LEAVE)
+            BluetoothManager.connection?.close()
+        }
         super.finish()
     }
 
-    private val player1: Player = GameManager.player1 as Player
-    private val player2: Player = GameManager.player2 as Player
+    private fun playAgain() {
+        if (player1::class == BotPlayer::class && player2::class == BotPlayer::class) {
+            playAgain(GameActivity::class.java)
+        }
+        else if (GameManager.gamemode == Gamemode.MULTIPLAYER_BLUETOOTH) {
+            if (otherPlayerLeft.get()) {
+                showDialog("Other player left")
+            }
+            else {
+                bluetoothInvitation?.invite()
+            }
+        }
+        else {
+            playAgain(ShipsPlacementActivity::class.java)
+        }
+    }
+
+    private fun <T> playAgain(activity: Class<T>) {
+        GameManager.reset()
+        GameManager.changeFirstToPlay()
+        startActivity(Intent(this, activity))
+        super.finish()
+    }
+
+    private val bluetoothInvitation by lazy {
+        try {
+            Invitation(this, BluetoothManager.connection!!) { data ->
+                if (data == null || data == Invitation.Data.ERROR) {
+                    if (data == null) {
+                        otherPlayerLeft.set(true)
+                    }
+                    BluetoothManager.connection?.close()
+                }
+                else {
+                    playAgain(ShipsPlacementActivity::class.java)
+                }
+            }
+        }
+        catch (_: Exception) {
+            null
+        }
+    }
+
+    private val player1: Player = GameManager.player1 ?: BotPlayer("Bot1")
+    private val player2: Player = GameManager.player2 ?: BotPlayer("Bot2")
 
     private val tvActivePlayer: TextView by lazy { findViewById(R.id.tvActivePLayer) }
     private val tvPlayer1: TextView by lazy { findViewById(R.id.tvPlayer1) }
@@ -51,6 +124,10 @@ class GameActivity : AppCompatActivity() {
     private val game = Thread {
         var activePlayer = player1
         var otherPlayer = player2
+
+        if (!GameManager.firstToPlay) {
+            activePlayer = otherPlayer.also { otherPlayer = activePlayer }
+        }
 
         updateActivePlayer(activePlayer)
         updateScore()
@@ -67,25 +144,66 @@ class GameActivity : AppCompatActivity() {
                     updateActivePlayer(activePlayer)
                 }
             }
+
             processWinner(activePlayer)
+            if (GameManager.gamemode == Gamemode.MULTIPLAYER_BLUETOOTH) {
+                bluetoothInvitation?.start()
+            }
         }
-        catch (_: InterruptedException) {}
+        catch (_: InterruptedException) {
+            BluetoothManager.connection?.close()
+            return@Thread
+        }
+        catch (e: Exception) {
+            if (e.message == BluetoothPlayer.LEAVE) {
+                otherPlayerLeft.set(true)
+                processWinner(player1)
+            }
+            else if (!leaving) {
+                showDialog("Connection lost")
+                runOnUiThread {
+                    @SuppressLint("SetTextI18n")
+                    tvPlayer2.text = "Connection lost"
+                }
+            }
+            BluetoothManager.connection?.close()
+        }
     }
 
-    private fun processWinner(player: Player) {
+    private fun processWinner(winner: Player) {
         runOnUiThread {
-            if (player == player1) {
-                tvPlayer1.setTextColor(getColor(R.color.win))
-                tvPlayer2.setTextColor(getColor(R.color.lose))
-                tvPlayer1.append("\uD83D\uDC51")
+            val tvWinner = if (winner == player1) tvPlayer1 else tvPlayer2
+            val tvLooser = if (winner == player2) tvPlayer1 else tvPlayer2
+
+            tvWinner.apply {
+                setTextColor(getColor(R.color.green))
+                append("\uD83D\uDC51")
+            }
+            tvLooser.setTextColor(getColor(R.color.red))
+
+            if (otherPlayerLeft.get()) {
+                showDialog("Other player left. You Win")
             }
             else {
-                tvPlayer1.setTextColor(getColor(R.color.lose))
-                tvPlayer2.setTextColor(getColor(R.color.win))
-                tvPlayer2.append("\uD83D\uDC51")
+                AlertDialog.Builder(this)
+                    .setTitle("Winner is $winner")
+                    .setNegativeButton("Cancel") { _, _ -> }
+                    .setPositiveButton("Rematch") { _, _ ->
+                        playAgain()
+                    }
+                    .create()
+                    .show()
             }
+        }
+    }
 
-            Toast.makeText(this, "Winner is $player", Toast.LENGTH_LONG).show()
+    private fun showDialog(message: String) {
+        runOnUiThread {
+            AlertDialog.Builder(this)
+                .setTitle(message)
+                .setNegativeButton("Cancel") { _, _ -> }
+                .create()
+                .show()
         }
     }
 
@@ -128,10 +246,50 @@ class GameActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btBack).setOnClickListener {
             finish()
         }
+
+        val btShips = findViewById<Button>(R.id.btShips)
+        var shipsVisibility = false
+
+        if (GameManager.gamemode != Gamemode.MULTIPLAYER_DEVICE) {
+            btShips.setOnClickListener {
+                shipsVisibility = !shipsVisibility
+                setShipsVisibility(player1, player2, shipsVisibility)
+
+                if (player1 is BotPlayer && player2 is BotPlayer) {
+                    setShipsVisibility(player2, player1, shipsVisibility)
+                }
+            }
+        }
+        else {
+            btShips.visibility = View.INVISIBLE
+        }
     }
 
-    private fun resize() {
-        val size = getUnitSize(resources)
+    private fun setShipsVisibility(player1: Player, player2: Player, visible: Boolean) {
+        if (player1 !is DevicePlayer) return
+
+        val board = player1.board
+        val visibleBoard = player2.opponentBoard
+
+        if (visible) {
+            visibleBoard.forEachIndexed { i, j, field ->
+                if (board[i][j].state == Field.State.SHIP && field.state == Field.State.UNKNOWN) {
+                    field.view?.text = Field.State.SHIP.toString()
+                    field.view?.setTextColor(Color.argb(0.5f, 1.0f, 1.0f, 1.0f))
+                }
+            }
+        }
+        else {
+            visibleBoard.forEach { field ->
+                if (field.state == Field.State.UNKNOWN && field.view?.text == Field.State.SHIP.toString()) {
+                    field.state = Field.State.UNKNOWN
+                }
+            }
+        }
+    }
+
+    override fun resize() {
+        val size = getUnitSize()
 
         arrayOf(R.id.layoutBoard1, R.id.layoutBoard2).forEach { id ->
             findViewById<LinearLayout>(id).apply {
@@ -163,7 +321,14 @@ class GameActivity : AppCompatActivity() {
             layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
                 width = 2 * size
                 height = 2 * size
-                topMargin = size
+            }
+        }
+
+        findViewById<Button>(R.id.btShips).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * size
+                height = 2 * size
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.35f)
             }
         }
 

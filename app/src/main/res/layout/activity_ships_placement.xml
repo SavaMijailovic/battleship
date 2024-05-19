@@ -15,9 +15,8 @@
             android:foreground="?android:attr/selectableItemBackground"
             android:src="?attr/homeAsUpIndicator"
             android:contentDescription="@string/left_arrow"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/layoutContainer"
-            android:layout_marginTop="25dp"/>
+            app:layout_constraintTop_toTopOf="@+id/layoutContainer"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/layoutContainer"
@@ -44,7 +43,7 @@
                     android:textStyle="bold"
                     android:gravity="center"
                     android:textSize="18sp"
-                    android:maxLength="15"
+                    android:maxLength="20"
                     android:text="Player1"
                     android:focusableInTouchMode="true"
                     android:cursorVisible="false"
@@ -89,8 +88,8 @@
                     android:textColor="@color/text"
                     android:textStyle="bold"
                     android:gravity="center"
-                    android:textSize="18sp"
-                    android:maxLength="15"
+                    android:textSize="16sp"
+                    android:maxLength="30"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"/>
 

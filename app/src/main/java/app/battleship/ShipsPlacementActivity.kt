@@ -1,6 +1,7 @@
 package app.battleship
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Point
@@ -11,21 +12,15 @@ import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
+import java.util.concurrent.atomic.AtomicBoolean
 
-class ShipsPlacementActivity : AppCompatActivity() {
+@SuppressLint("MissingPermission")
+class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_ships_placement)
-        hideSystemUI(window)
-
-        resize()
 
         val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard)
         val layoutShips = findViewById<LinearLayout>(R.id.layoutShips)
@@ -41,19 +36,30 @@ class ShipsPlacementActivity : AppCompatActivity() {
         setTextViewListeners()
     }
 
-    private val gamemode = GameManager.gamemode
+    override fun finish() {
+        leaving = true
+        BluetoothManager.connection?.close()
+        super.finish()
+    }
+
+    private var leaving = false
+    private val ready = AtomicBoolean(false)
+
     private var player1: Player? = GameManager.player1
     private var player2: Player? = GameManager.player2
 
-    private var draggingStarted = false
-    private var draggingX = 0f
-    private var draggingY = 0f
-    private var draggingDropped = false
-    private var draggingShip: Ship? = null
-    private var offset = 0
+    private val dragging = object {
+        var started = false
+        var x = 0f
+        var y = 0f
+        var dropped = false
+        var ship: Ship? = null
+        var offset = 0
+    }
 
+    @SuppressLint("SetTextI18n")
     private fun setPlayers(board: Board) {
-        when (gamemode) {
+        when (GameManager.gamemode) {
             Gamemode.SINGLEPLAYER -> {
                 player1 = DevicePlayer("Player1", board)
                 player2 = BotPlayer("Bot")
@@ -73,6 +79,97 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            Gamemode.MULTIPLAYER_BLUETOOTH -> {
+                if (BluetoothManager.connection == null) {
+                    finish()
+                    return
+                }
+
+                val connection = BluetoothManager.connection!!
+
+                player1 = DevicePlayer(BluetoothManager.adapter.name ?: "Player1", board)
+                findViewById<TextView>(R.id.tvPlayer1).text = player1?.name
+
+                val btPlayer = BluetoothPlayer(connection.socket.remoteDevice.name ?: "Other player", connection)
+                player2 = btPlayer
+
+                Thread {
+                    val tvPlayer2: TextView = findViewById(R.id.tvPlayer2)
+
+                    runOnUiThread {
+                        tvPlayer2.setTextColor(getColor(R.color.red))
+                        tvPlayer2.text = "Other player is not ready"
+                    }
+
+                    try {
+                        while (true) {
+                            btPlayer.ready = connection.read().toBooleanStrictOrNull() ?: continue
+
+                            if (btPlayer.ready) {
+                                if (ready.get()) {
+                                    connection.write(true)
+                                    runOnUiThread {
+                                        startGame()
+                                    }
+                                    break
+                                }
+                                else {
+                                    runOnUiThread {
+                                        tvPlayer2.setTextColor(getColor(R.color.green))
+                                        tvPlayer2.text = "Other player is ready"
+                                    }
+                                }
+                            }
+                            else {
+                                runOnUiThread {
+                                    tvPlayer2.setTextColor(getColor(R.color.red))
+                                    tvPlayer2.text = "Other player is not ready"
+                                }
+                            }
+                        }
+                    }
+                    catch (_: Exception) {
+                        if (!leaving) {
+                            runOnUiThread {
+                                tvPlayer2.setTextColor(getColor(R.color.text))
+                                tvPlayer2.text = "Connection lost"
+
+                                AlertDialog.Builder(this)
+                                    .setTitle("Connection lost")
+                                    .setNegativeButton("Cancel") { _, _ -> }
+                                    .create()
+                                    .show()
+                            }
+                        }
+                        connection.close()
+                    }
+                }.start()
+            }
+        }
+    }
+
+    private fun checkIfReady() {
+        ready.set(player1?.isReady() == true)
+        if (!ready.get()) return
+
+        val connection = BluetoothManager.connection!!
+        if (!connection.isConnected()) throw RuntimeException()
+
+        connection.write(true)
+
+        if (player2?.isReady() != true) {
+            AlertDialog.Builder(this)
+                .setTitle("Waiting for ${connection.socket.remoteDevice.name ?: "other player"}...")
+                .setNegativeButton("Cancel") { _, _ ->
+                    ready.set(false)
+                    connection.write(false)
+                }
+                .create()
+                .apply {
+                    setCanceledOnTouchOutside(false)
+                }
+                .show()
         }
     }
 
@@ -86,6 +183,7 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         GameManager.setPlayers(player1, player2)
         startActivity(Intent(this, ShipsPlacementActivity::class.java))
+        super.finish()
     }
 
     private fun startGame() {
@@ -95,21 +193,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
         val name = findViewById<TextView>(R.id.tvPlayer1).text.toString().trim()
         if (name.isNotEmpty()) {
-            if (gamemode == Gamemode.SINGLEPLAYER) {
-                player1?.name = name
-            }
-            else if (gamemode == Gamemode.MULTIPLAYER_DEVICE) {
-                player2?.name = name
+            when (GameManager.gamemode) {
+                Gamemode.SINGLEPLAYER, Gamemode.MULTIPLAYER_BLUETOOTH -> {
+                    player1?.name = name
+                }
+                Gamemode.MULTIPLAYER_DEVICE -> {
+                    player2?.name = name
+                }
             }
         }
 
-        startActivity(Intent(this, GameActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
-    }
-
-    override fun finish() {
-        GameManager.reset()
+        startActivity(Intent(this, GameActivity::class.java))
         super.finish()
     }
 
@@ -128,8 +222,21 @@ class ShipsPlacementActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btBattle).setOnClickListener {
-            if (gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
+            if (GameManager.gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
                 nextPlayer()
+            }
+            else if (GameManager.gamemode == Gamemode.MULTIPLAYER_BLUETOOTH) {
+                try {
+                    checkIfReady()
+                }
+                catch (_: Exception) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Connection lost")
+                        .setNegativeButton("Cancel") { _, _ -> }
+                        .create()
+                        .show()
+                    BluetoothManager.connection?.close()
+                }
             }
             else {
                 startGame()
@@ -161,16 +268,16 @@ class ShipsPlacementActivity : AppCompatActivity() {
             ship.view?.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (ship == draggingShip) {
+                        if (ship == dragging.ship) {
                             ship.hide()
-                            draggingDropped = false
+                            dragging.dropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
-                        if (!event.result || !draggingDropped) {
-                            draggingShip?.show()
+                        if (!event.result || !dragging.dropped) {
+                            dragging.ship?.show()
                         }
                         true
                     }
@@ -219,8 +326,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
 
-        this.offset = (x / (shadowView.width.toDouble() / ship.size)).toInt()
-        this.draggingShip = ship
+        dragging.offset = (x / (shadowView.width.toDouble() / ship.size)).toInt()
+        dragging.ship = ship
 
         view.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
@@ -230,17 +337,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
             view.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (field.isShip() && field.ship == draggingShip) {
+                        if (field.isShip() && field.ship == dragging.ship) {
                             field.ship?.clear()
-                            draggingDropped = false
+                            dragging.dropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
                         field.background?.color = Color.TRANSPARENT
-                        if (!event.result || !draggingDropped) {
-                            draggingShip?.show()
+                        if (!event.result || !dragging.dropped) {
+                            dragging.ship?.show()
                         }
                         true
                     }
@@ -260,11 +367,11 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
 
                     DragEvent.ACTION_DROP -> {
-                        draggingDropped = processDragging(board, field) { field, ship ->
+                        dragging.dropped = processDragging(board, field) { field, ship ->
                             field.background?.color = Color.TRANSPARENT
                             ship.add(field)
                         }
-                        draggingDropped
+                        dragging.dropped
                     }
 
                     else -> false
@@ -274,15 +381,15 @@ class ShipsPlacementActivity : AppCompatActivity() {
     }
 
     private fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
-        if (draggingShip == null) return false
-        val ship = draggingShip as Ship
+        if (dragging.ship == null) return false
+        val ship = dragging.ship as Ship
 
         if (ship.horizontal) {
-            val (start, end) = Pair(field.col - offset, field.col - offset + ship.size - 1)
+            val (start, end) = Pair(field.col - dragging.offset, field.col - dragging.offset + ship.size - 1)
             return board.set(Field(field.row, start), Field(field.row, end), ship, action)
         }
         else {
-            val (start, end) = Pair(field.row - offset, field.row - offset + ship.size - 1)
+            val (start, end) = Pair(field.row - dragging.offset, field.row - dragging.offset + ship.size - 1)
             return board.set(Field(start, field.col), Field(end, field.col), ship, action)
         }
     }
@@ -297,22 +404,22 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        draggingStarted = false
-                        draggingX = event.rawX
-                        draggingY = event.rawY
+                        dragging.started = false
+                        dragging.x = event.rawX
+                        dragging.y = event.rawY
                         true
                     }
 
                     MotionEvent.ACTION_MOVE -> {
-                        if (!draggingStarted && (event.rawX != draggingX || event.rawY != draggingY)) {
-                            draggingStarted = true
+                        if (!dragging.started && (event.rawX != dragging.x || event.rawY != dragging.y)) {
+                            dragging.started = true
                             startDraggingField(field, event)
                         }
                         true
                     }
 
                     MotionEvent.ACTION_UP -> {
-                        if (!draggingStarted && field.isShip()) {
+                        if (!dragging.started && field.isShip()) {
                             field.ship?.rotate(board)
                         }
                         true
@@ -373,8 +480,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
 
-        this.offset = offset
-        this.draggingShip = ship
+        dragging.offset = offset
+        dragging.ship = ship
 
         field.view?.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
@@ -465,8 +572,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
         return shipView
     }
 
-    private fun resize() {
-        val size = getUnitSize(resources)
+    override fun resize() {
+        val size = getUnitSize()
 
         arrayOf(R.id.tvPlayer1, R.id.tvPlayer2).forEach { id ->
             findViewById<TextView>(id).apply {
@@ -532,7 +639,6 @@ class ShipsPlacementActivity : AppCompatActivity() {
             layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
                 width = 2 * size
                 height = 2 * size
-                topMargin = size
             }
         }
     }

@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.view.MotionEvent
 
-open class DevicePlayer(name: String, private val board: Board) : Player(name) {
+open class DevicePlayer(name: String, val board: Board) : Player(name) {
 
     override var opponentBoard: Board
         get() = super.opponentBoard
@@ -110,5 +110,4 @@ open class DevicePlayer(name: String, private val board: Board) : Player(name) {
             }
         }
     }
-
 }

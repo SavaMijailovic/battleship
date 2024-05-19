@@ -14,7 +14,6 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.children
 import com.bumptech.glide.Glide
@@ -24,17 +23,13 @@ import java.util.*
 import kotlin.math.ceil
 
 @SuppressLint("MissingPermission")
-class BluetoothConnectionActivity : AppCompatActivity() {
+class BluetoothConnectionActivity : BaseActivity(R.layout.activity_bluetooth_connection) {
     private companion object {
         private val CONNECTION_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fa")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_bluetooth_connection)
-        hideSystemUI(window)
-
-        resize()
 
         setUpButtons()
         Invitation.reset()
@@ -307,8 +302,8 @@ class BluetoothConnectionActivity : AppCompatActivity() {
         return view
     }
 
-    private fun resize() {
-        val size = getUnitSize(resources)
+    override fun resize() {
+        val size = getUnitSize()
 
         findViewById<TextView>(R.id.tvSearching).apply {
             layoutParams.apply {

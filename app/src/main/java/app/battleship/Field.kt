@@ -1,5 +1,6 @@
 package app.battleship
 
+import android.graphics.Color
 import android.widget.TextView
 import java.util.Objects
 import kotlin.math.abs
@@ -16,6 +17,7 @@ class Field(
         set(value) {
             field = value
             view?.text = value.toString()
+            view?.setTextColor(Color.BLACK)
         }
 
     var background: BorderDrawable? = null

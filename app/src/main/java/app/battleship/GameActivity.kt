@@ -3,23 +3,21 @@ package app.battleship
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
+import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import java.util.concurrent.atomic.AtomicBoolean
 
-class GameActivity : AppCompatActivity() {
+class GameActivity : BaseActivity(R.layout.activity_game) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_game)
-        hideSystemUI(window)
-
-        resize()
 
         setPlayers()
         setPlayersNames()
@@ -248,10 +246,50 @@ class GameActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btBack).setOnClickListener {
             finish()
         }
+
+        val btShips = findViewById<Button>(R.id.btShips)
+        var shipsVisibility = false
+
+        if (GameManager.gamemode != Gamemode.MULTIPLAYER_DEVICE) {
+            btShips.setOnClickListener {
+                shipsVisibility = !shipsVisibility
+                setShipsVisibility(player1, player2, shipsVisibility)
+
+                if (player1 is BotPlayer && player2 is BotPlayer) {
+                    setShipsVisibility(player2, player1, shipsVisibility)
+                }
+            }
+        }
+        else {
+            btShips.visibility = View.INVISIBLE
+        }
     }
 
-    private fun resize() {
-        val size = getUnitSize(resources)
+    private fun setShipsVisibility(player1: Player, player2: Player, visible: Boolean) {
+        if (player1 !is DevicePlayer) return
+
+        val board = player1.board
+        val visibleBoard = player2.opponentBoard
+
+        if (visible) {
+            visibleBoard.forEachIndexed { i, j, field ->
+                if (board[i][j].state == Field.State.SHIP && field.state == Field.State.UNKNOWN) {
+                    field.view?.text = Field.State.SHIP.toString()
+                    field.view?.setTextColor(Color.argb(0.5f, 1.0f, 1.0f, 1.0f))
+                }
+            }
+        }
+        else {
+            visibleBoard.forEach { field ->
+                if (field.state == Field.State.UNKNOWN && field.view?.text == Field.State.SHIP.toString()) {
+                    field.state = Field.State.UNKNOWN
+                }
+            }
+        }
+    }
+
+    override fun resize() {
+        val size = getUnitSize()
 
         arrayOf(R.id.layoutBoard1, R.id.layoutBoard2).forEach { id ->
             findViewById<LinearLayout>(id).apply {
@@ -283,7 +321,14 @@ class GameActivity : AppCompatActivity() {
             layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
                 width = 2 * size
                 height = 2 * size
-                topMargin = size
+            }
+        }
+
+        findViewById<Button>(R.id.btShips).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                width = 2 * size
+                height = 2 * size
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.35f)
             }
         }
 

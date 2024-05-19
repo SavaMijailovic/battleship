@@ -13,19 +13,14 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import java.util.concurrent.atomic.AtomicBoolean
 
 @SuppressLint("MissingPermission")
-class ShipsPlacementActivity : AppCompatActivity() {
+class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_ships_placement)
-        hideSystemUI(window)
-
-        resize()
 
         val layoutBoard = findViewById<LinearLayout>(R.id.layoutBoard)
         val layoutShips = findViewById<LinearLayout>(R.id.layoutShips)
@@ -53,12 +48,14 @@ class ShipsPlacementActivity : AppCompatActivity() {
     private var player1: Player? = GameManager.player1
     private var player2: Player? = GameManager.player2
 
-    private var draggingStarted = false
-    private var draggingX = 0f
-    private var draggingY = 0f
-    private var draggingDropped = false
-    private var draggingShip: Ship? = null
-    private var offset = 0
+    private val dragging = object {
+        var started = false
+        var x = 0f
+        var y = 0f
+        var dropped = false
+        var ship: Ship? = null
+        var offset = 0
+    }
 
     @SuppressLint("SetTextI18n")
     private fun setPlayers(board: Board) {
@@ -271,16 +268,16 @@ class ShipsPlacementActivity : AppCompatActivity() {
             ship.view?.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (ship == draggingShip) {
+                        if (ship == dragging.ship) {
                             ship.hide()
-                            draggingDropped = false
+                            dragging.dropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
-                        if (!event.result || !draggingDropped) {
-                            draggingShip?.show()
+                        if (!event.result || !dragging.dropped) {
+                            dragging.ship?.show()
                         }
                         true
                     }
@@ -329,8 +326,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
 
-        this.offset = (x / (shadowView.width.toDouble() / ship.size)).toInt()
-        this.draggingShip = ship
+        dragging.offset = (x / (shadowView.width.toDouble() / ship.size)).toInt()
+        dragging.ship = ship
 
         view.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
@@ -340,17 +337,17 @@ class ShipsPlacementActivity : AppCompatActivity() {
             view.setOnDragListener { _, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
-                        if (field.isShip() && field.ship == draggingShip) {
+                        if (field.isShip() && field.ship == dragging.ship) {
                             field.ship?.clear()
-                            draggingDropped = false
+                            dragging.dropped = false
                         }
                         true
                     }
 
                     DragEvent.ACTION_DRAG_ENDED -> {
                         field.background?.color = Color.TRANSPARENT
-                        if (!event.result || !draggingDropped) {
-                            draggingShip?.show()
+                        if (!event.result || !dragging.dropped) {
+                            dragging.ship?.show()
                         }
                         true
                     }
@@ -370,11 +367,11 @@ class ShipsPlacementActivity : AppCompatActivity() {
                     }
 
                     DragEvent.ACTION_DROP -> {
-                        draggingDropped = processDragging(board, field) { field, ship ->
+                        dragging.dropped = processDragging(board, field) { field, ship ->
                             field.background?.color = Color.TRANSPARENT
                             ship.add(field)
                         }
-                        draggingDropped
+                        dragging.dropped
                     }
 
                     else -> false
@@ -384,15 +381,15 @@ class ShipsPlacementActivity : AppCompatActivity() {
     }
 
     private fun processDragging(board: Board, field: Field, action: (Field, Ship) -> Unit) : Boolean {
-        if (draggingShip == null) return false
-        val ship = draggingShip as Ship
+        if (dragging.ship == null) return false
+        val ship = dragging.ship as Ship
 
         if (ship.horizontal) {
-            val (start, end) = Pair(field.col - offset, field.col - offset + ship.size - 1)
+            val (start, end) = Pair(field.col - dragging.offset, field.col - dragging.offset + ship.size - 1)
             return board.set(Field(field.row, start), Field(field.row, end), ship, action)
         }
         else {
-            val (start, end) = Pair(field.row - offset, field.row - offset + ship.size - 1)
+            val (start, end) = Pair(field.row - dragging.offset, field.row - dragging.offset + ship.size - 1)
             return board.set(Field(start, field.col), Field(end, field.col), ship, action)
         }
     }
@@ -407,22 +404,22 @@ class ShipsPlacementActivity : AppCompatActivity() {
 
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        draggingStarted = false
-                        draggingX = event.rawX
-                        draggingY = event.rawY
+                        dragging.started = false
+                        dragging.x = event.rawX
+                        dragging.y = event.rawY
                         true
                     }
 
                     MotionEvent.ACTION_MOVE -> {
-                        if (!draggingStarted && (event.rawX != draggingX || event.rawY != draggingY)) {
-                            draggingStarted = true
+                        if (!dragging.started && (event.rawX != dragging.x || event.rawY != dragging.y)) {
+                            dragging.started = true
                             startDraggingField(field, event)
                         }
                         true
                     }
 
                     MotionEvent.ACTION_UP -> {
-                        if (!draggingStarted && field.isShip()) {
+                        if (!dragging.started && field.isShip()) {
                             field.ship?.rotate(board)
                         }
                         true
@@ -483,8 +480,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
             }
         }
 
-        this.offset = offset
-        this.draggingShip = ship
+        dragging.offset = offset
+        dragging.ship = ship
 
         field.view?.startDragAndDrop(null, shadowBuilder, null, View.DRAG_FLAG_OPAQUE)
     }
@@ -575,8 +572,8 @@ class ShipsPlacementActivity : AppCompatActivity() {
         return shipView
     }
 
-    private fun resize() {
-        val size = getUnitSize(resources)
+    override fun resize() {
+        val size = getUnitSize()
 
         arrayOf(R.id.tvPlayer1, R.id.tvPlayer2).forEach { id ->
             findViewById<TextView>(id).apply {
@@ -642,7 +639,6 @@ class ShipsPlacementActivity : AppCompatActivity() {
             layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
                 width = 2 * size
                 height = 2 * size
-                topMargin = size
             }
         }
     }

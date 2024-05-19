@@ -8,14 +8,14 @@
         tools:context=".MainActivity">
 
     <TextView
-            android:id="@+id/textView"
+            android:id="@+id/tvTittle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="30sp"
             android:textColor="@color/black"
             android:text="@string/app_name"
-            app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
-            android:layout_marginBottom="20dp"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="20dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
 
@@ -35,6 +35,8 @@
                 android:text="Singleplayer"
                 android:textAllCaps="false"
                 android:textSize="20sp"
+                android:background="@color/button"
+                android:foreground="?android:attr/selectableItemBackground"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
@@ -46,6 +48,8 @@
                 android:text="Multiplayer on device"
                 android:textAllCaps="false"
                 android:textSize="20sp"
+                android:background="@color/button"
+                android:foreground="?android:attr/selectableItemBackground"
                 app:layout_constraintTop_toBottomOf="@+id/btSingleplayer"
                 android:layout_marginTop="10dp"
                 app:layout_constraintStart_toStartOf="parent"
@@ -58,6 +62,8 @@
                 android:text="Bot vs Bot"
                 android:textAllCaps="false"
                 android:textSize="20sp"
+                android:background="@color/button"
+                android:foreground="?android:attr/selectableItemBackground"
                 app:layout_constraintTop_toBottomOf="@+id/btMultiplayerBluetooth"
                 android:layout_marginTop="10dp"
                 app:layout_constraintStart_toStartOf="parent"
@@ -70,6 +76,8 @@
                 android:text="Multiplayer via Bluetooth"
                 android:textAllCaps="false"
                 android:textSize="20sp"
+                android:background="@color/button"
+                android:foreground="?android:attr/selectableItemBackground"
                 app:layout_constraintTop_toBottomOf="@+id/btMultiplayerDevice"
                 android:layout_marginTop="10dp"
                 app:layout_constraintStart_toStartOf="parent"

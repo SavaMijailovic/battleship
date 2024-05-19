@@ -9,17 +9,17 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.TypedValue
 import android.widget.Button
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity(R.layout.activity_main) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        hideSystemUI(window)
 
         GameManager.reset(true)
         BluetoothManager.reset()
@@ -137,6 +137,38 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("Cancel") { _, _ -> }
                 .create()
                 .show()
+        }
+    }
+
+    override fun resize() {
+        val size = getUnitSize()
+
+        findViewById<TextView>(R.id.tvTittle).apply {
+            layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                topMargin = (0.5 * size).toInt()
+                height = (1.6 * size).toInt()
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.7f)
+            }
+        }
+
+        val buttons = arrayOf<Button>(
+            findViewById(R.id.btSingleplayer),
+            findViewById(R.id.btMultiplayerDevice),
+            findViewById(R.id.btMultiplayerBluetooth),
+            findViewById(R.id.btTwoBots),
+        )
+
+        val padding = (size * 0.5).toInt()
+
+        buttons.forEachIndexed { index, button ->
+            button.apply {
+                layoutParams = (layoutParams as ConstraintLayout.LayoutParams).apply {
+                    topMargin = if (index > 0) (0.7 * size).toInt() else 0
+                    height = (1.5 * size).toInt()
+                    setPadding(padding, 0, padding, 0)
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, height * 0.5f)
+                }
+            }
         }
     }
 }

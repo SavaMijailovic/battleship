@@ -15,6 +15,7 @@ import android.view.View
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
 @SuppressLint("MissingPermission")
 class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
@@ -55,6 +56,8 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
         var dropped = false
         var ship: Ship? = null
         var offset = 0
+        private val eps = 10f
+        fun moved(x: Float, y: Float) = abs(this.x - x) >= eps || abs(this.y - y) >= eps
     }
 
     @SuppressLint("SetTextI18n")
@@ -222,6 +225,14 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
         }
 
         findViewById<Button>(R.id.btBattle).setOnClickListener {
+            ships.forEach { ship ->
+                if (ship.fields.isEmpty()) {
+                    ship.view?.animate()?.alpha(0.2f)?.withEndAction {
+                        ship.view?.animate()?.alpha(1f)
+                    }
+                }
+            }
+
             if (GameManager.gamemode == Gamemode.MULTIPLAYER_DEVICE && player2 == null) {
                 nextPlayer()
             }
@@ -294,7 +305,7 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
             ship.view?.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        startDraggingShip(ship, event)
+                        startDraggingShip(ship, event.rawX, event.rawY)
                         true
                     }
                     else -> false
@@ -303,13 +314,13 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
         }
     }
 
-    private fun startDraggingShip(ship: Ship, event: MotionEvent) {
+    private fun startDraggingShip(ship: Ship, posX: Float, posY: Float) {
         val view = ship.view as LinearLayout
 
         val location = IntArray(2)
         view.getLocationOnScreen(location)
-        val x = event.rawX - location[0]
-        val y = event.rawY - location[1]
+        val x = abs(posX - location[0])
+        val y = abs(posY - location[1])
 
         val shadowView = generateShipView(
             ship.size, view.width, view.height,
@@ -411,9 +422,9 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
                     }
 
                     MotionEvent.ACTION_MOVE -> {
-                        if (!dragging.started && (event.rawX != dragging.x || event.rawY != dragging.y)) {
+                        if (!dragging.started && dragging.moved(event.rawX, event.rawY)) {
                             dragging.started = true
-                            startDraggingField(field, event)
+                            startDraggingField(field, dragging.x, dragging.y)
                         }
                         true
                     }
@@ -431,14 +442,14 @@ class ShipsPlacementActivity : BaseActivity(R.layout.activity_ships_placement) {
         }
     }
 
-    private fun startDraggingField(field: Field, event: MotionEvent) {
+    private fun startDraggingField(field: Field, posX: Float, posY: Float) {
         val ship = field.ship as Ship
         val shipView = ship.view as LinearLayout
 
         val location = IntArray(2)
         field.view?.getLocationOnScreen(location)
-        val x = event.rawX - location[0]
-        val y = event.rawY - location[1]
+        val x = abs(posX - location[0])
+        val y = abs(posY - location[1])
 
         val offset = ship.fields.first().distanceTo(field)
 

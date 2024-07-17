@@ -40,16 +40,18 @@ Ensure that USB (Wireless) debugging and Install via USB options are enabled in 
 - #### Using Command Line
     - On Linux or Mac:
         ```sh
-        ./gradlew installDebug 
+        ./gradlew installDebug
         ```
     - On Windows:
         ```sh
         gradlew installDebug
         ```
-    
-      
+
 It should build and install the application on the connected device, and then you should be able to run it by opening it.
 
 ## Authors
 - [Sava Mijailovic](https://github.com/SavaMijailovic)
 - [Dimitrije Jovanovic](https://github.com/dimitrije-24)
+
+## Awards
+- [Award for the best project](./award.pdf)

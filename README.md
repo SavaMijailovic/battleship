@@ -17,27 +17,26 @@ Players alternate turns targeting each other's ships, and the objective of the g
 
 Download the application [here](https://github.com/SavaMijailovic/battleship/releases) on your Android device and install it by opening the downloaded APK file.
 
-## Building and Running
+## Build and Run
+
+**Requirements: Java Development Kit (JDK), Android SDK, Android 8.0 or higher**
 
 The application is developed in Kotlin for the Android operating system using IntelliJ IDEA.
-
-#### Requirements: Java Development Kit (JDK), Android SDK, Android 8.0 or higher
-
-To build, install, and run the application on your machine you can use IDE or command line.
+To build, install, and run the application on your device you can use IDE or command line.
 To install and run, you need to be connected to an Android device via USB or Wi-Fi.
 Ensure that USB (Wireless) debugging and Install via USB options are enabled in the Developer options of your device settings.
 
-- #### Clone the repository locally and navigate to the created directory:
+- Clone the repository locally and navigate to the created directory:
     ```sh
     git clone https://github.com/SavaMijailovic/battleship.git
     cd battleship
     ```
 
-- #### Using IDE
+- Using IDE
     - Open project (directory) and find the Run option
     - You can also run it on a virtual device
 
-- #### Using Command Line
+- Using Command Line
     - On Linux or Mac:
         ```sh
         ./gradlew installDebug
